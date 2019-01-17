@@ -1,0 +1,7 @@
+.idea/
+.vagrant/
+
+docker-volume-loopback
+
+plugin/rootfs
+tmp

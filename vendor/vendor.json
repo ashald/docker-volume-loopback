@@ -1,0 +1,133 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "PbR6ZKoLeSZl8aXxDQqXih0wSgE=",
+			"path": "github.com/Microsoft/go-winio",
+			"revision": "97e4973ce50b2ff5f09635a57e2b88a037aae829",
+			"revisionTime": "2018-08-23T22:24:21Z"
+		},
+		{
+			"checksumSHA1": "RfRYeGCcXj3cu5p0fJoIegLK12Y=",
+			"path": "github.com/alexflint/go-arg",
+			"revision": "f7c0423bd11ee80ab81d25c6d46f492998af8547",
+			"revisionTime": "2018-05-16T18:24:05Z"
+		},
+		{
+			"checksumSHA1": "M5vBatiAKUjyLYrb9nS+6QbpEjE=",
+			"path": "github.com/alexflint/go-scalar",
+			"revision": "e80c3b7ed292b052c7083b6fd7154a8422c33f65",
+			"revisionTime": "2017-02-16T02:04:25Z"
+		},
+		{
+			"checksumSHA1": "zg16zjZTQ9R89+UOLmEZxHgxDtM=",
+			"path": "github.com/coreos/go-systemd/activation",
+			"revision": "eee3db372b31153ca0b90702e165948699803fd0",
+			"revisionTime": "2018-08-28T14:03:53Z"
+		},
+		{
+			"checksumSHA1": "IaLUlgL27e2W5LVWvncHgPWKffg=",
+			"path": "github.com/docker/docker/pkg/mount",
+			"revision": "9267f34f6da44afa7d92c039fe92b3e3ed61abce",
+			"revisionTime": "2018-10-02T18:13:17Z"
+		},
+		{
+			"checksumSHA1": "GDLNLD3FL8uDHPvbAeFUlc0omEc=",
+			"path": "github.com/docker/go-connections/sockets",
+			"revision": "97c2040d34dfae1d1b1275fa3a78dbdd2f41cf7e",
+			"revisionTime": "2018-08-21T09:36:06Z"
+		},
+		{
+			"checksumSHA1": "e/cSY11dRBYpw1MpxpKLDG0NO28=",
+			"path": "github.com/docker/go-plugins-helpers/sdk",
+			"revision": "39aeefe5db4eb2034cdc56ff43a86f63b4b543bc",
+			"revisionTime": "2018-09-17T14:28:44Z"
+		},
+		{
+			"checksumSHA1": "ef/VThRWf9h3sQkgEi+kJ+UHXWw=",
+			"path": "github.com/docker/go-plugins-helpers/volume",
+			"revision": "39aeefe5db4eb2034cdc56ff43a86f63b4b543bc",
+			"revisionTime": "2018-09-17T14:28:44Z"
+		},
+		{
+			"checksumSHA1": "0o/uepI6WDKqPNMXPbjeml1ciNo=",
+			"path": "github.com/docker/go-units",
+			"revision": "47565b4f722fb6ceae66b95f853feed578a4a51c",
+			"revisionTime": "2018-02-12T13:46:57Z"
+		},
+		{
+			"checksumSHA1": "cl9bdp4vvusDqC44P6NOtMK5tIU=",
+			"path": "github.com/konsorten/go-windows-terminal-sequences",
+			"revision": "b729f2633dfe35f4d1d8a32385f6685610ce1cb5",
+			"revisionTime": "2018-04-02T22:36:58Z"
+		},
+		{
+			"checksumSHA1": "18YrywDvb67HU8xYF5vqKMgelx0=",
+			"path": "github.com/pkg/errors",
+			"revision": "c059e472caf75dbe73903f6521a20abac245b17f",
+			"revisionTime": "2018-09-11T06:21:13Z"
+		},
+		{
+			"checksumSHA1": "+MU/wkkxzd99mICD4t9Vm6WRosU=",
+			"path": "github.com/rs/zerolog",
+			"revision": "8e36cbf881d3eadd0c6455d55588af60c7cc4736",
+			"revisionTime": "2018-09-28T01:11:43Z"
+		},
+		{
+			"checksumSHA1": "73NzoKIiJU6h4v6hg9eM4t7V/zw=",
+			"path": "github.com/rs/zerolog/internal/cbor",
+			"revision": "8e36cbf881d3eadd0c6455d55588af60c7cc4736",
+			"revisionTime": "2018-09-28T01:11:43Z"
+		},
+		{
+			"checksumSHA1": "e0b96rsdqg3fNtCDQOdZA4M+MNo=",
+			"path": "github.com/rs/zerolog/internal/json",
+			"revision": "8e36cbf881d3eadd0c6455d55588af60c7cc4736",
+			"revisionTime": "2018-09-28T01:11:43Z"
+		},
+		{
+			"checksumSHA1": "cfWqNEVqrlTckIp6feLbp9bwUbM=",
+			"path": "github.com/sirupsen/logrus",
+			"revision": "1ed61965b9e594bf37539680d7f63eccd060314f",
+			"revisionTime": "2018-09-30T20:58:21Z"
+		},
+		{
+			"checksumSHA1": "cvtzOvhaL6oTyoC+xSvVh2+gWmo=",
+			"path": "github.com/ventu-io/go-shortid",
+			"revision": "771a37caa5cf0c81f585d7b6df4dfc77e0615b5c",
+			"revisionTime": "2017-10-29T13:18:06Z"
+		},
+		{
+			"checksumSHA1": "BGm8lKZmvJbf/YOJLeL1rw2WVjA=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "e3636079e1a4c1f337f212cc5cd2aca108f6c900",
+			"revisionTime": "2018-09-26T22:24:25Z"
+		},
+		{
+			"checksumSHA1": "f3Y7JIZH61oMmp8nphqe8Mg+XoU=",
+			"path": "golang.org/x/net/internal/socks",
+			"revision": "4dfa2610cdf3b287375bbba5b8f2a14d3b01d8de",
+			"revisionTime": "2018-09-26T15:41:24Z"
+		},
+		{
+			"checksumSHA1": "UrFs0T7kkYsUxJG5bsJt7KB8ejI=",
+			"path": "golang.org/x/net/proxy",
+			"revision": "4dfa2610cdf3b287375bbba5b8f2a14d3b01d8de",
+			"revisionTime": "2018-09-26T15:41:24Z"
+		},
+		{
+			"checksumSHA1": "VDNO7IDwtrKUlC6JGmdEriwnz3Y=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "e4b3c5e9061176387e7cea65e4dc5853801f3fb7",
+			"revisionTime": "2018-09-28T10:55:38Z"
+		},
+		{
+			"checksumSHA1": "Y7nctMxT58lRM78VtElPerhcnEs=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "e4b3c5e9061176387e7cea65e4dc5853801f3fb7",
+			"revisionTime": "2018-09-28T10:55:38Z"
+		}
+	],
+	"rootPath": "github.com/ashald/docker-volume-loopback"
+}

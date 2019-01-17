@@ -1,0 +1,58 @@
+{
+    "Description": "Fixed size volumes using loopback devices",
+    "Documentation": "https://github.com/ashald/docker-volume-loopback",
+    "Entrypoint": [
+        "/docker-volume-loopback"
+    ],
+    "Env": [
+        {
+            "Description": "dir used to keep track of currently mounted volumes",
+            "Name": "STATE_DIR",
+            "Settable": ["value"],
+            "Value": "/run/docker-volume-loopback"
+        },
+        {
+            "Description": "dir used to store actual volume data",
+            "Name": "DATA_DIR",
+            "Settable": ["value"],
+            "Value": "/mnt"
+        },
+        {
+            "Description": "Default size to apply to volumes when no value is specified",
+            "Name": "DEFAULT_SIZE",
+            "Settable": ["value"],
+            "Value": "1G"
+        }
+    ],
+    "Interface": {
+        "Socket": "dvl.sock",
+        "Types": ["docker.volumedriver/1.0"]
+    },
+    "Linux": {
+        "AllowAllDevices": true,
+        "Capabilities": [
+            "CAP_SYS_ADMIN"
+        ]
+    },
+    "Mounts": [
+        {
+            "Destination": "/dev",
+            "Options": ["bind"],
+            "Source": "/dev",
+            "Type": "bind"
+        },
+        {
+            "Destination": "/run",
+            "Options": ["bind"],
+            "Source": "/run",
+            "Type": "bind"
+        },
+        {
+            "Destination": "/host",
+            "Options": ["bind"],
+            "Source": "/",
+            "Type": "bind"
+        }
+    ],
+    "PropagatedMount": "/mnt"
+}
