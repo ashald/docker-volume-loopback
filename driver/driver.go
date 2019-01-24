@@ -19,6 +19,7 @@ import (
 type Config struct {
 	StateDir    		string
 	DataDir    			string
+	MountDir    		string
 	DefaultSize    		string
 }
 
@@ -38,6 +39,7 @@ func NewDriver(cfg Config) (d Driver, err error) {
 	m, err := manager.New(manager.Config{
 		StateDir:	cfg.StateDir,
 		DataDir:	cfg.DataDir,
+		MountDir:	cfg.MountDir,
 	})
 	if err != nil {
 		err = errors.Wrapf(err,
@@ -144,14 +146,14 @@ func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
 	resp.Volume = &v.Volume{
 		Name:       req.Name,
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
-		Mountpoint: vol.EntrypointPath,
+		Mountpoint: vol.MountPointPath,
 		Status: map[string]interface{}{
 			"size": strconv.FormatUint(vol.SizeInBytes, 10),
 		},
 	}
 
 	logger.Debug().
-		Str("mountpoint", vol.EntrypointPath).
+		Str("mountpoint", vol.MountPointPath).
 		Msg("finished retrieving volume")
 	return resp, nil
 }
@@ -195,11 +197,11 @@ func (d Driver) Path(req *v.PathRequest) (*v.PathResponse, error) {
 	}
 
 	logger.Debug().
-		Str("path", vol.EntrypointPath).
+		Str("path", vol.MountPointPath).
 		Msg("finished retrieving volume path")
 
 	resp := new(v.PathResponse)
-	resp.Mountpoint = vol.EntrypointPath
+	resp.Mountpoint = vol.MountPointPath
 	return resp, nil
 }
 
@@ -231,7 +233,7 @@ func (d Driver) Mount(req *v.MountRequest) (*v.MountResponse, error) {
 func (d Driver) Unmount(req *v.UnmountRequest) (error) {
 	var logger = d.logger.With().
 		Str("log-id", shortid.MustGenerate()).
-		Str("method", "mount").
+		Str("method", "unmount").
 		Str("name", req.Name).
 		Str("id", req.ID).
 		Logger()

@@ -15,6 +15,12 @@
             "Description": "dir used to store actual volume data",
             "Name": "DATA_DIR",
             "Settable": ["value"],
+            "Value": "/srv/var/lib/docker-volume-loopback"
+        },
+        {
+            "Description": "dir used to create mount-points",
+            "Name": "MOUNT_DIR",
+            "Settable": ["value"],
             "Value": "/mnt"
         },
         {
@@ -48,7 +54,7 @@
             "Type": "bind"
         },
         {
-            "Destination": "/host",
+            "Destination": "/srv",
             "Options": ["bind"],
             "Source": "/",
             "Type": "bind"

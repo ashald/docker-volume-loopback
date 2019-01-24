@@ -11,10 +11,9 @@ type Volume struct {
 	Name           string
 	SizeInBytes    uint64
 	StateDir       string
-	DataDir        string
-	VesselPath     string
-	EntrypointPath string
-	CreatedAt	   time.Time
+	DataFilePath   string
+	MountPointPath string
+	CreatedAt      time.Time
 
 }
 

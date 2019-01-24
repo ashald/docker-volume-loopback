@@ -18,25 +18,20 @@ var (
 type Manager struct {
 	stateDir	string
 	dataDir     string
+	mountDir	string
 }
 
 type Config struct {
 	StateDir	string
 	DataDir		string
+	MountDir	string
 }
 
-func (m Manager) composeVolumeDataDir(name string) string {
-	return filepath.Join(m.dataDir, name)
-}
-
-func (m Manager) composeVolumeVesselPath(name string) string {
-	return filepath.Join(m.composeVolumeDataDir(name), "vessel")
-}
 
 func (m Manager) getVolume(name string) (vol Volume, err error) {
-	volumeDir := m.composeVolumeDataDir(name)
+	volumeDataFilePath := filepath.Join(m.dataDir, name)
 
-	volumeInfo, err := os.Stat(volumeDir)
+	volumeDataFileInfo, err := os.Stat(volumeDataFilePath)
 
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -45,30 +40,22 @@ func (m Manager) getVolume(name string) (vol Volume, err error) {
 		return
 	}
 
-	if !volumeInfo.IsDir() {
+	if !volumeDataFileInfo.Mode().IsRegular() {
 		err = errors.Errorf(
-			"There is something else than a dir where a volume dir was expected: '%s'",
-			volumeDir)
+			"Volume data path expected to point toa file but it appears to be something else: '%s'",
+			volumeDataFilePath)
 		return
 	}
 
-	vessel := m.composeVolumeVesselPath(name)
-	entrypoint := filepath.Join(volumeDir, "entrypoint")
-
-	vesselInfo, err := os.Stat(vessel)
-	if err != nil {
-		return
-	}
-
+	mountPointPath := filepath.Join(m.mountDir, name)
 
 	vol = Volume{
 		Name:           name,
-		SizeInBytes:    uint64(vesselInfo.Size()),
+		SizeInBytes:    uint64(volumeDataFileInfo.Size()),
 		StateDir:       filepath.Join(m.stateDir, name),
-		DataDir:        volumeDir,
-		VesselPath:     vessel,
-		EntrypointPath: entrypoint,
-		CreatedAt:		vesselInfo.ModTime(),
+		DataFilePath:   volumeDataFilePath,
+		MountPointPath: mountPointPath,
+		CreatedAt:      volumeDataFileInfo.ModTime(),
 	}
 	return
 }
@@ -103,6 +90,20 @@ func New(cfg Config) (manager Manager, err error) {
 	}
 	manager.dataDir = cfg.DataDir
 
+	// mount dir
+	if cfg.MountDir == "" {
+		err = errors.Errorf("MountDir is not specified.")
+		return
+	}
+
+	if !filepath.IsAbs(cfg.MountDir) {
+		err = errors.Errorf(
+			"MountDir (%s) must be an absolute path",
+			cfg.MountDir)
+		return
+	}
+	manager.mountDir = cfg.MountDir
+
 	return
 }
 
@@ -116,7 +117,7 @@ func (m Manager) List() ([]Volume, error) {
 	var vols []Volume
 
 	for _, file := range files {
-		if file.IsDir() {
+		if file.Mode().IsRegular() {
 			vol, err := m.getVolume(file.Name())
 			if err != nil {
 				return nil, err
@@ -157,37 +158,36 @@ func (m Manager) Create(name string, sizeInBytes int64) error {
 			name, sizeInBytes)
 	}
 
-	volumeDir := m.composeVolumeDataDir(name)
-	err = os.MkdirAll(volumeDir, 0755)
+	err = os.MkdirAll(m.dataDir, 0755)
 	if err != nil {
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot create volume dir '%s'",
-			name, volumeDir)
+			"Error creating volume '%s' - data dir does not exist: '%s'",
+			name, m.dataDir)
 
 	}
 
 	// create vessel
-	vessel := m.composeVolumeVesselPath(name)
-	vesselFile, err := os.Create(vessel)
+	dataFilePath := filepath.Join(m.dataDir, name)
+	dataFileInfo, err := os.Create(dataFilePath)
 	if err != nil {
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot create vessel '%s'",
-			name, vessel)
+			"Error creating volume '%s' - cannot create datafile '%s'",
+			name, dataFilePath)
 	}
 
-	err = vesselFile.Truncate(sizeInBytes)
+	err = dataFileInfo.Truncate(sizeInBytes)
 	if err != nil {
 		return errors.Wrapf(err,
 			"Error creating volume '%s' - cannot allocate '%s' bytes",
 			name, sizeInBytes)
 	}
 
-	// format vessel
-	mkfsCmd := exec.Command("mkfs.ext4", "-F", vessel)
+	// format data file
+	mkfsCmd := exec.Command("mkfs.ext4", "-F", dataFilePath)
 	_, err = mkfsCmd.Output()
 	if err != nil {
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot format vessel as ext4 filesystem",
+			"Error creating volume '%s' - cannot format datafile as ext4 filesystem",
 			name, sizeInBytes)
 	}
 
@@ -205,7 +205,6 @@ func (m Manager) Mount(name string, lease string) (*string, error) {
 	vol, err := m.getVolume(name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error mounting volume '%s' - cannot get its metadata", name)
-
 	}
 
 	isAlreadyMounted, err := vol.IsMounted() // checking mount status early before we record a lease
@@ -243,21 +242,21 @@ func (m Manager) Mount(name string, lease string) (*string, error) {
 	}
 
 	if !isAlreadyMounted {
-		err = os.Mkdir(vol.EntrypointPath, 0777)
+		err = os.Mkdir(vol.MountPointPath, 0777)
 		if err != nil {
 			return nil, errors.Wrapf(err,
-				"Error mounting volume '%s' - cannot create entrypoint dir",
+				"Error mounting volume '%s' - cannot create mount point dir",
 				name)
 		}
-		mountCmd := exec.Command("mount", vol.VesselPath, vol.EntrypointPath)
+		mountCmd := exec.Command("mount", vol.DataFilePath, vol.MountPointPath)
 		_, err = mountCmd.Output()
 		if err != nil {
 			return nil, errors.Wrapf(err,
 				"Error mounting volume '%s' - cannot mount vessel '%s' at '%s'",
-				name, vol.VesselPath, vol.EntrypointPath)
+				name, vol.DataFilePath, vol.MountPointPath)
 		}
 	}
-	return &vol.EntrypointPath, nil
+	return &vol.MountPointPath, nil
 }
 
 func (m Manager) UnMount(name string, lease string) error {
@@ -298,17 +297,17 @@ func (m Manager) UnMount(name string, lease string) error {
 				name, lease)
 		}
 
-		err := syscall.Unmount(vol.EntrypointPath, syscall.MNT_DETACH)
+		err := syscall.Unmount(vol.MountPointPath, syscall.MNT_DETACH)
 		if err != nil {
 			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot unmount vessel '%s' from entrypoint '%s'",
-				name, vol.VesselPath, vol.EntrypointPath)
+				"Error un-mounting volume '%s' - cannot unmount vessel '%s' from mount point '%s'",
+				name, vol.DataFilePath, vol.MountPointPath)
 		}
-		err = os.RemoveAll(vol.EntrypointPath)
+		err = os.RemoveAll(vol.MountPointPath)
 		if err != nil {
 			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot remove entrypoint '%s'",
-				name, vol.EntrypointPath)
+				"Error un-mounting volume '%s' - cannot remove mount point dir '%s'",
+				name, vol.MountPointPath)
 		}
 	}
 
@@ -342,11 +341,11 @@ func (m Manager) Delete(name string) error {
 			name)
 	}
 
-	err = os.RemoveAll(vol.DataDir)
+	err = os.Remove(vol.DataFilePath)
 	if err != nil {
 		return errors.Wrapf(err,
 			"Error deleting volume '%s' - cannot delete '%s'",
-			name, vol.DataDir)
+			name, vol.DataFilePath)
 	}
 
 	return nil
