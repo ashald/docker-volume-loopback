@@ -1,14 +1,18 @@
 VERSION             :=  0
-ROOTFS_IMAGE		:=	ashald/docker-volume-loopback-rootfs
-ROOTFS_CONTAINER	:=	rootfs
+AUTHOR              :=  ashald
 PLUGIN_NAME			:=	docker-volume-loopback
-PLUGIN_FULL_NAME	:=	ashald/docker-volume-loopback
+PLUGIN_FULL_NAME	:=	${AUTHOR}/${PLUGIN_NAME}
+ROOTFS_CONTAINER	:=	${PLUGIN_NAME}-rootfs
+ROOTFS_IMAGE		:=	${AUTHOR}/${ROOTFS_CONTAINER}
+
 
 build:
-	GOOS=linux GOARCH=amd64 go build -o $(PLUGIN_NAME)
+	GOOS=linux GOARCH=amd64 go build -o "$(PLUGIN_NAME)"
+
 
 rootfs-image:
 	docker build -t $(ROOTFS_IMAGE) .
+
 
 rootfs: rootfs-image
 	docker rm -vf $(ROOTFS_CONTAINER) || true

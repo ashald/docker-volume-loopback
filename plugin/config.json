@@ -31,7 +31,7 @@
         }
     ],
     "Interface": {
-        "Socket": "dvl.sock",
+        "Socket": "docker-volume-loopback.sock",
         "Types": ["docker.volumedriver/1.0"]
     },
     "Linux": {

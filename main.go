@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	socketAddress = "/run/docker/plugins/loop.sock"
+	socketAddress = "/run/docker/plugins/docker-volume-loopback.sock"
 )
 
 type config struct {
