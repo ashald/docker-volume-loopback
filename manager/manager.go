@@ -144,7 +144,7 @@ func (m Manager) Get(name string) (vol Volume, err error) {
 }
 
 
-func (m Manager) Create(name string, sizeInBytes int64) error {
+func (m Manager) Create(name string, sizeInBytes int64, uid, gid int, mode uint32) error {
 	err := validateName(name)
 	if err != nil {
 		return errors.Wrapf(err,
@@ -166,10 +166,12 @@ func (m Manager) Create(name string, sizeInBytes int64) error {
 
 	}
 
-	// create vessel
+	// create data file
 	dataFilePath := filepath.Join(m.dataDir, name)
 	dataFileInfo, err := os.Create(dataFilePath)
 	if err != nil {
+		_ = os.Remove(dataFilePath) // attempt to cleanup
+
 		return errors.Wrapf(err,
 			"Error creating volume '%s' - cannot create datafile '%s'",
 			name, dataFilePath)
@@ -177,6 +179,7 @@ func (m Manager) Create(name string, sizeInBytes int64) error {
 
 	err = dataFileInfo.Truncate(sizeInBytes)
 	if err != nil {
+		_ = os.Remove(dataFilePath) // attempt to cleanup
 		return errors.Wrapf(err,
 			"Error creating volume '%s' - cannot allocate '%s' bytes",
 			name, sizeInBytes)
@@ -186,30 +189,73 @@ func (m Manager) Create(name string, sizeInBytes int64) error {
 	mkfsCmd := exec.Command("mkfs.ext4", "-F", dataFilePath)
 	_, err = mkfsCmd.Output()
 	if err != nil {
+		_ = os.Remove(dataFilePath) // attempt to cleanup
 		return errors.Wrapf(err,
 			"Error creating volume '%s' - cannot format datafile as ext4 filesystem",
 			name, sizeInBytes)
 	}
 
+	// At this point we're done - last step is to adjust ownership if required.
+	if uid >= 0 || gid >= 0 {
+		lease := "driver"
+
+		mountPath, err := m.Mount(name, lease)
+		if err != nil {
+			_ = os.Remove(dataFilePath) // attempt to cleanup
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot mount volume to adjust its root owner/permissions",
+				name, sizeInBytes)
+		}
+
+		if mode > 0 {
+			err = os.Chmod(mountPath, os.FileMode(mode))
+			if err != nil {
+				_ = m.UnMount(name, lease)
+				_ = os.Remove(dataFilePath) // attempt to cleanup
+				return errors.Wrapf(err,
+					"Error creating volume '%s' - cannot adjust volume root permissions",
+					name, sizeInBytes)
+			}
+		}
+		err = os.Chown(mountPath, uid, gid)
+		if err != nil {
+			_ = m.UnMount(name, lease)
+			_ = os.Remove(dataFilePath) // attempt to cleanup
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot adjust volume root owner",
+				name, sizeInBytes)
+		}
+
+		err = m.UnMount(name, lease)
+		if err != nil {
+			_ = os.Remove(dataFilePath) // attempt to cleanup
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot unmount volume after adjusting its root owner/permissions",
+				name, sizeInBytes)
+		}
+	}
+
 	return nil
 }
 
-func (m Manager) Mount(name string, lease string) (*string, error) {
+func (m Manager) Mount(name string, lease string) (string, error) {
+	var failedResult string
+
 	err := validateName(name)
 	if err != nil {
-		return nil, errors.Wrapf(err,
+		return failedResult, errors.Wrapf(err,
 			"Error mounting volume '%s' - invalid volume name",
 			name)
 	}
 
 	vol, err := m.getVolume(name)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error mounting volume '%s' - cannot get its metadata", name)
+		return failedResult, errors.Wrapf(err, "Error mounting volume '%s' - cannot get its metadata", name)
 	}
 
 	isAlreadyMounted, err := vol.IsMounted() // checking mount status early before we record a lease
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error mounting volume '%s' - cannot check its mount status", name)
+		return failedResult, errors.Wrapf(err, "Error mounting volume '%s' - cannot check its mount status", name)
 	}
 
 	_, err = os.Stat(vol.StateDir)
@@ -218,7 +264,7 @@ func (m Manager) Mount(name string, lease string) (*string, error) {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(vol.StateDir, 0755)
 			if err != nil {
-				return nil, errors.Wrapf(err,
+				return failedResult, errors.Wrapf(err,
 					"Error mounting volume '%s' - cannot create its state dir",
 					name)
 			}
@@ -229,14 +275,14 @@ func (m Manager) Mount(name string, lease string) (*string, error) {
 	_, err = os.Stat(leaseFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, errors.Wrapf(err,
+			return failedResult, errors.Wrapf(err,
 				"Error mounting volume '%s' - cannot access lease file '%s'",
 				name, leaseFile)
 		}
 	}
 	_, err = os.Create(leaseFile)
 	if err != nil {
-		return nil, errors.Wrapf(err,
+		return failedResult, errors.Wrapf(err,
 			"Error mounting volume '%s' - cannot create lease file '%s'",
 			name, lease)
 	}
@@ -244,19 +290,21 @@ func (m Manager) Mount(name string, lease string) (*string, error) {
 	if !isAlreadyMounted {
 		err = os.Mkdir(vol.MountPointPath, 0777)
 		if err != nil {
-			return nil, errors.Wrapf(err,
+			_ = os.Remove(leaseFile) // attempt to cleanup
+			return failedResult, errors.Wrapf(err,
 				"Error mounting volume '%s' - cannot create mount point dir",
 				name)
 		}
 		mountCmd := exec.Command("mount", vol.DataFilePath, vol.MountPointPath)
 		_, err = mountCmd.Output()
 		if err != nil {
-			return nil, errors.Wrapf(err,
+			_ = os.Remove(leaseFile) // attempt to cleanup
+			return failedResult, errors.Wrapf(err,
 				"Error mounting volume '%s' - cannot mount vessel '%s' at '%s'",
 				name, vol.DataFilePath, vol.MountPointPath)
 		}
 	}
-	return &vol.MountPointPath, nil
+	return vol.MountPointPath, nil
 }
 
 func (m Manager) UnMount(name string, lease string) error {

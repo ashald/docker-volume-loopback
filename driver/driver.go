@@ -3,9 +3,9 @@ package driver
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 
 	"github.com/ashald/docker-volume-loopback/manager"
 	"github.com/pkg/errors"
@@ -64,9 +64,9 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		Str("opts-size", req.Options["size"]).
 		Logger()
 
-	size, present := req.Options["size"]
+	size, sizePresent := req.Options["size"]
 
-	if !present {
+	if !sizePresent {
 		logger.Debug().
 			Str("default", d.defaultSize).
 			Msg("no size opt found, using default")
@@ -80,12 +80,68 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			size)
 	}
 
+	uid := -1
+	uidStr, uidPresent := req.Options["uid"]
+	if uidPresent && len(uidStr) > 0 {
+		uid, err = strconv.Atoi(uidStr)
+		if err != nil {
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot parse 'uid' option '%s' as an integer",
+				req.Name, uidStr)
+		}
+		if uid < 0 {
+			return errors.Errorf(
+				"Error creating volume '%s' - 'uid' option should be >= 0 but received '%s'",
+				req.Name, uid)
+		}
+
+		logger.Debug().
+			Int("uid", uid).
+			Msg("set volume root uid")
+	}
+
+	gid := -1
+	gidStr, gidPresent := req.Options["gid"]
+	if gidPresent && len(gidStr) > 0 {
+		gid, err = strconv.Atoi(gidStr)
+		if err != nil {
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot parse 'gid' option '%s' as an integer",
+				req.Name, gidStr)
+		}
+		if gid < 0 {
+			return errors.Errorf(
+				"Error creating volume '%s' - 'gid' option should be >= 0 but received '%s'",
+				req.Name, gid)
+		}
+
+		logger.Debug().
+			Int("gid", gid).
+			Msg("set volume root gid")
+	}
+
+	var mode uint32
+	modeStr, modePresent := req.Options["mode"]
+	if modePresent && len(modeStr) > 0 {
+		logger.Debug().
+			Str("mode", modeStr).
+			Msg("will parse as octal")
+
+		modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
+		if err != nil || modeParsed <= 0 || modeParsed > 07777 {
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot parse mode '%s' as 4-position octal",
+				req.Name, modeStr)
+		}
+		mode = uint32(modeParsed)
+	}
+
 	d.Lock()
 	defer d.Unlock()
 
 	logger.Debug().Msg("starting creation")
 
-	err = d.manager.Create(req.Name, sizeInBytes)
+	err = d.manager.Create(req.Name, sizeInBytes, uid, gid, mode)
 	if err != nil {
 		return err
 	}
@@ -226,7 +282,7 @@ func (d Driver) Mount(req *v.MountRequest) (*v.MountResponse, error) {
 	logger.Debug().Msg("finished mounting volume")
 
 	resp := new(v.MountResponse)
-	resp.Mountpoint = *entrypoint
+	resp.Mountpoint = entrypoint
 	return resp, nil
 }
 
