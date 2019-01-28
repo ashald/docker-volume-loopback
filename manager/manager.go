@@ -1,12 +1,14 @@
 package manager
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"syscall"
 )
 
@@ -144,7 +146,7 @@ func (m Manager) Get(name string) (vol Volume, err error) {
 }
 
 
-func (m Manager) Create(name string, sizeInBytes int64, uid, gid int, mode uint32) error {
+func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid int, mode uint32) error {
 	err := validateName(name)
 	if err != nil {
 		return errors.Wrapf(err,
@@ -177,17 +179,50 @@ func (m Manager) Create(name string, sizeInBytes int64, uid, gid int, mode uint3
 			name, dataFilePath)
 	}
 
-	err = dataFileInfo.Truncate(sizeInBytes)
-	if err != nil {
-		_ = os.Remove(dataFilePath) // attempt to cleanup
-		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot allocate '%s' bytes",
-			name, sizeInBytes)
+	if sparse {
+		err = dataFileInfo.Truncate(sizeInBytes)
+		if err != nil {
+			_ = os.Remove(dataFilePath) // attempt to cleanup
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot allocate '%s' bytes",
+				name, sizeInBytes)
+		}
+	} else {
+		// Try using fallocate - super fast if data dir is on ext4 or xfs
+		errBytes, err := exec.Command("fallocate", "-l", fmt.Sprint(sizeInBytes), dataFilePath).CombinedOutput()
+
+		// fallocate failed - either not enough space or unsupported FS
+		if err != nil {
+			errStr := strings.TrimSpace(string(errBytes[:]))
+
+			// If there is not enough space then we just error out
+			if strings.Contains(errStr, "No space") {
+				_ = os.Remove(dataFilePath) // Primitive attempt to cleanup
+				return errors.Wrapf(err,
+					"Error creating volume '%s' - not enough disk space: '%s'", name, errStr)
+			}
+
+			// Here we assume that FS is unsupported and will fall back to 'dd' which is slow but should work everywhere
+			of := fmt.Sprintf("of=%s", dataFilePath)
+			bs := int64(1000000)
+			count := sizeInBytes / bs // we lose some precision here but it's likely to be negligible
+			errBytes, err = exec.Command(
+				"dd",
+				"if=/dev/zero", of, fmt.Sprintf("bs=%d", bs), fmt.Sprintf("count=%d", count),
+				).CombinedOutput()
+
+			// Something went wrong - likely no space on an fallocate-incompatible FS
+			if err != nil {
+				errStr = strings.TrimSpace(string(errBytes[:]))
+				_ = os.Remove(dataFilePath) // Primitive attempt to cleanup
+				return errors.Wrapf(err,
+					"Error creating volume '%s' - '%s'", name, errStr)
+			}
+		}
 	}
 
 	// format data file
-	mkfsCmd := exec.Command("mkfs.ext4", "-F", dataFilePath)
-	_, err = mkfsCmd.Output()
+	_, err = exec.Command("mkfs.ext4", "-F", dataFilePath).Output()
 	if err != nil {
 		_ = os.Remove(dataFilePath) // attempt to cleanup
 		return errors.Wrapf(err,
