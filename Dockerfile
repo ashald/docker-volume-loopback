@@ -4,11 +4,11 @@ RUN apk --no-cache add make
 ADD ./ /go/src/github.com/ashald/docker-volume-loopback/
 WORKDIR /go/src/github.com/ashald/docker-volume-loopback
 RUN make build && \
-    mv ./docker-volume-loopback /usr/bin/
+    mv ./docker-volume-loopback /
 
 
 # package
 FROM alpine
-RUN apk --no-cache add e2fsprogs
-COPY --from=builder /usr/bin/docker-volume-loopback /docker-volume-loopback
+RUN apk --no-cache add e2fsprogs xfsprogs
+COPY --from=builder /docker-volume-loopback /
 CMD [ "/docker-volume-loopback" ]
