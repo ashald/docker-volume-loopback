@@ -80,13 +80,24 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			size)
 	}
 
+	sparse := false
+	sparseStr, sparsePresent := req.Options["sparsePresent"]
+	if sparsePresent {
+		sparse, err = strconv.ParseBool(sparseStr)
+		if err != nil {
+			return errors.Wrapf(err,
+				"Error creating volume '%s' - cannot parse 'sparse' option value '%s' as bool",
+				req.Name, sparseStr)
+		}
+	}
+
 	uid := -1
 	uidStr, uidPresent := req.Options["uid"]
 	if uidPresent && len(uidStr) > 0 {
 		uid, err = strconv.Atoi(uidStr)
 		if err != nil {
 			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse 'uid' option '%s' as an integer",
+				"Error creating volume '%s' - cannot parse 'uid' option value '%s' as an integer",
 				req.Name, uidStr)
 		}
 		if uid < 0 {
@@ -106,7 +117,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		gid, err = strconv.Atoi(gidStr)
 		if err != nil {
 			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse 'gid' option '%s' as an integer",
+				"Error creating volume '%s' - cannot parse 'gid' option value '%s' as an integer",
 				req.Name, gidStr)
 		}
 		if gid < 0 {
@@ -141,7 +152,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 
 	logger.Debug().Msg("starting creation")
 
-	err = d.manager.Create(req.Name, sizeInBytes, uid, gid, mode)
+	err = d.manager.Create(req.Name, sizeInBytes, sparse, uid, gid, mode)
 	if err != nil {
 		return err
 	}
