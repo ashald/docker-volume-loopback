@@ -14,21 +14,20 @@ import (
 
 var (
 	NamePattern = `^[a-zA-Z0-9][\w\-]{1,250}$`
-	NameRegex = regexp.MustCompile(NamePattern)
+	NameRegex   = regexp.MustCompile(NamePattern)
 )
 
 type Manager struct {
-	stateDir	string
-	dataDir     string
-	mountDir	string
+	stateDir string
+	dataDir  string
+	mountDir string
 }
 
 type Config struct {
-	StateDir	string
-	DataDir		string
-	MountDir	string
+	StateDir string
+	DataDir  string
+	MountDir string
 }
-
 
 func (m Manager) getVolume(name string) (vol Volume, err error) {
 	volumeDataFilePath := filepath.Join(m.dataDir, name)
@@ -49,19 +48,27 @@ func (m Manager) getVolume(name string) (vol Volume, err error) {
 		return
 	}
 
+	details, ok := volumeDataFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		err = errors.Errorf(
+			"An issue occurred while retrieving details about volume '%s' - cannot stat '%s'",
+			name, volumeDataFilePath)
+	}
+
 	mountPointPath := filepath.Join(m.mountDir, name)
 
 	vol = Volume{
-		Name:           name,
-		SizeInBytes:    uint64(volumeDataFileInfo.Size()),
-		StateDir:       filepath.Join(m.stateDir, name),
-		DataFilePath:   volumeDataFilePath,
-		MountPointPath: mountPointPath,
-		CreatedAt:      volumeDataFileInfo.ModTime(),
+		Name:               name,
+		CurrentSizeInBytes: uint64(details.Blocks * 512),
+		MaxSizeInBytes:     uint64(details.Size),
+		StateDir:           filepath.Join(m.stateDir, name),
+		DataFilePath:       volumeDataFilePath,
+		MountPointPath:     mountPointPath,
+		CreatedAt:          volumeDataFileInfo.ModTime(),
 	}
+
 	return
 }
-
 
 func New(cfg Config) (manager Manager, err error) {
 	// state dir
@@ -131,7 +138,6 @@ func (m Manager) List() ([]Volume, error) {
 	return vols, nil
 }
 
-
 func (m Manager) Get(name string) (vol Volume, err error) {
 	err = validateName(name)
 	if err != nil {
@@ -144,7 +150,6 @@ func (m Manager) Get(name string) (vol Volume, err error) {
 	vol, err = m.getVolume(name)
 	return
 }
-
 
 func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid int, mode uint32) error {
 	err := validateName(name)
@@ -179,7 +184,9 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			name, dataFilePath)
 	}
 
+	fmt.Println(fmt.Sprintf("--- %v", sparse))
 	if sparse {
+		fmt.Println(fmt.Sprintf("--- Creating as sparse"))
 		err = dataFileInfo.Truncate(sizeInBytes)
 		if err != nil {
 			_ = os.Remove(dataFilePath) // attempt to cleanup
@@ -188,11 +195,13 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 				name, sizeInBytes)
 		}
 	} else {
+		fmt.Println(fmt.Sprintf("--- Creating as fallocate"))
 		// Try using fallocate - super fast if data dir is on ext4 or xfs
 		errBytes, err := exec.Command("fallocate", "-l", fmt.Sprint(sizeInBytes), dataFilePath).CombinedOutput()
 
 		// fallocate failed - either not enough space or unsupported FS
 		if err != nil {
+			fmt.Println(fmt.Sprintf("--- fallocate failed"))
 			errStr := strings.TrimSpace(string(errBytes[:]))
 
 			// If there is not enough space then we just error out
@@ -209,7 +218,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			errBytes, err = exec.Command(
 				"dd",
 				"if=/dev/zero", of, fmt.Sprintf("bs=%d", bs), fmt.Sprintf("count=%d", count),
-				).CombinedOutput()
+			).CombinedOutput()
 
 			// Something went wrong - likely no space on an fallocate-incompatible FS
 			if err != nil {

@@ -16,21 +16,21 @@ const (
 )
 
 type config struct {
-	StateDir			string `arg:"--state-dir,env:STATE_DIR,help:dir used to keep track of currently mounted volumes"`
-	DataDir				string `arg:"--data-dir,env:DATA_DIR,help:dir used to store actual volume data"`
-	MountDir			string `arg:"--mount-dir,env:MOUNT_DIR,help:dir used to create mount-points"`
-	DefaultSize			string `arg:"--default-size,env:DEFAULT_SIZE,help:default size for volumes created"`
-	Debug         		bool   `arg:"env:DEBUG,help:enable debug logs"`
+	StateDir    string `arg:"--state-dir,env:STATE_DIR,help:dir used to keep track of currently mounted volumes"`
+	DataDir     string `arg:"--data-dir,env:DATA_DIR,help:dir used to store actual volume data"`
+	MountDir    string `arg:"--mount-dir,env:MOUNT_DIR,help:dir used to create mount-points"`
+	DefaultSize string `arg:"--default-size,env:DEFAULT_SIZE,help:default size for volumes created"`
+	Debug       bool   `arg:"env:DEBUG,help:enable debug logs"`
 }
 
 var (
-	logger         = zerolog.New(os.Stdout)
-	args           = &config{
-		StateDir: "/run/docker-volume-loopback",
-		DataDir: "/var/lib/docker-volume-loopback",
-		MountDir: "/mnt",
+	logger = zerolog.New(os.Stdout)
+	args   = &config{
+		StateDir:    "/run/docker-volume-loopback",
+		DataDir:     "/var/lib/docker-volume-loopback",
+		MountDir:    "/mnt",
 		DefaultSize: "1G",
-		Debug:	false,
+		Debug:       false,
 	}
 )
 
@@ -47,10 +47,10 @@ func main() {
 	}
 
 	d, err := driver.NewDriver(driver.Config{
-		StateDir:			args.StateDir,
-		DataDir:			args.DataDir,
-		MountDir:			args.MountDir,
-		DefaultSize:    	args.DefaultSize,
+		StateDir:    args.StateDir,
+		DataDir:     args.DataDir,
+		MountDir:    args.MountDir,
+		DefaultSize: args.DefaultSize,
 	})
 	if err != nil {
 		logger.Fatal().

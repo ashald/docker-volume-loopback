@@ -215,7 +215,8 @@ func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
 		Mountpoint: vol.MountPointPath,
 		Status: map[string]interface{}{
-			"size": strconv.FormatUint(vol.SizeInBytes, 10),
+			"size-max": 	strconv.FormatUint(vol.MaxSizeInBytes, 10),
+			"size-current": strconv.FormatUint(vol.CurrentSizeInBytes, 10),
 		},
 	}
 
