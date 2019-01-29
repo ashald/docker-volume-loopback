@@ -9,9 +9,22 @@ chown -1:-1
 
 ```
 
+### Sparse
+
+|FS   | Sparse        | Regular    |
+| --- | ------------- | ---------- |
+|xfs  | 0%/1%         | 100%/100%  |
+|ext4 | 0%/3%         | 100%/3%    |
+
+
 ## Development
 Go 1.11
 ```bash
 go mod vendor
 go mod tidy
 ```
+
+## Test
+ext4/xfs - sparse/regular
+on ext4/xfs vs ext3
+not enough space

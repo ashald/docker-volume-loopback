@@ -29,47 +29,6 @@ type Config struct {
 	MountDir string
 }
 
-func (m Manager) getVolume(name string) (vol Volume, err error) {
-	volumeDataFilePath := filepath.Join(m.dataDir, name)
-
-	volumeDataFileInfo, err := os.Stat(volumeDataFilePath)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = errors.Errorf("Volume '%s' does not exist", name)
-		}
-		return
-	}
-
-	if !volumeDataFileInfo.Mode().IsRegular() {
-		err = errors.Errorf(
-			"Volume data path expected to point toa file but it appears to be something else: '%s'",
-			volumeDataFilePath)
-		return
-	}
-
-	details, ok := volumeDataFileInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		err = errors.Errorf(
-			"An issue occurred while retrieving details about volume '%s' - cannot stat '%s'",
-			name, volumeDataFilePath)
-	}
-
-	mountPointPath := filepath.Join(m.mountDir, name)
-
-	vol = Volume{
-		Name:               name,
-		CurrentSizeInBytes: uint64(details.Blocks * 512),
-		MaxSizeInBytes:     uint64(details.Size),
-		StateDir:           filepath.Join(m.stateDir, name),
-		DataFilePath:       volumeDataFilePath,
-		MountPointPath:     mountPointPath,
-		CreatedAt:          volumeDataFileInfo.ModTime(),
-	}
-
-	return
-}
-
 func New(cfg Config) (manager Manager, err error) {
 	// state dir
 	if cfg.StateDir == "" {
@@ -127,7 +86,8 @@ func (m Manager) List() ([]Volume, error) {
 
 	for _, file := range files {
 		if file.Mode().IsRegular() {
-			vol, err := m.getVolume(file.Name())
+			name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			vol, err := m.getVolume(name)
 			if err != nil {
 				return nil, err
 			}
@@ -151,7 +111,7 @@ func (m Manager) Get(name string) (vol Volume, err error) {
 	return
 }
 
-func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid int, mode uint32) error {
+func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, uid, gid int, mode uint32) error {
 	err := validateName(name)
 	if err != nil {
 		return errors.Wrapf(err,
@@ -165,15 +125,27 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			name, sizeInBytes)
 	}
 
+	// We perform fs validation and construct mkfs flags array on the way
+	var mkfsFlags []string
+	if fs == "xfs" {
+		mkfsFlags = []string{}
+	} else if fs == "ext4" {
+		mkfsFlags = []string{"-F"}
+	} else {
+		return errors.Errorf(
+			"Error creating volume '%s' - only xfs and ext4 filesystems are supported, '%s' requested",
+			name, fs)
+	}
+
 	err = os.MkdirAll(m.dataDir, 0755)
 	if err != nil {
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - data dir does not exist: '%s'",
+			"Error creating volume '%s' - cannot create data dir: '%s'",
 			name, m.dataDir)
 	}
 
 	// create data file
-	dataFilePath := filepath.Join(m.dataDir, name)
+	dataFilePath := filepath.Join(m.dataDir, name+"."+fs)
 	dataFileInfo, err := os.Create(dataFilePath)
 	if err != nil {
 		_ = os.Remove(dataFilePath) // attempt to cleanup
@@ -207,7 +179,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			}
 
 			// Here we assume that FS is unsupported and will fall back to 'dd' which is slow but should work everywhere
-			of := fmt.Sprintf("of=%s", dataFilePath)
+			of := "of=" + dataFilePath
 			bs := int64(1000000)
 			count := sizeInBytes / bs // we lose some precision here but it's likely to be negligible
 			errBytes, err = exec.Command(
@@ -226,12 +198,12 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 	}
 
 	// format data file
-	_, err = exec.Command("mkfs.ext4", "-F", dataFilePath).Output()
+	_, err = exec.Command(fmt.Sprintf("mkfs.%s", fs), append(mkfsFlags, dataFilePath)...).Output()
 	if err != nil {
 		_ = os.Remove(dataFilePath) // attempt to cleanup
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot format datafile as ext4 filesystem",
-			name, sizeInBytes)
+			"Error creating volume '%s' - cannot format datafile as %s filesystem",
+			name, fs)
 	}
 
 	// At this point we're done - last step is to adjust ownership if required.
@@ -243,7 +215,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			_ = os.Remove(dataFilePath) // attempt to cleanup
 			return errors.Wrapf(err,
 				"Error creating volume '%s' - cannot mount volume to adjust its root owner/permissions",
-				name, sizeInBytes)
+				name)
 		}
 
 		if mode > 0 {
@@ -253,7 +225,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 				_ = os.Remove(dataFilePath) // attempt to cleanup
 				return errors.Wrapf(err,
 					"Error creating volume '%s' - cannot adjust volume root permissions",
-					name, sizeInBytes)
+					name)
 			}
 		}
 		err = os.Chown(mountPath, uid, gid)
@@ -262,7 +234,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			_ = os.Remove(dataFilePath) // attempt to cleanup
 			return errors.Wrapf(err,
 				"Error creating volume '%s' - cannot adjust volume root owner",
-				name, sizeInBytes)
+				name)
 		}
 
 		err = m.UnMount(name, lease)
@@ -270,7 +242,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			_ = os.Remove(dataFilePath) // attempt to cleanup
 			return errors.Wrapf(err,
 				"Error creating volume '%s' - cannot unmount volume after adjusting its root owner/permissions",
-				name, sizeInBytes)
+				name)
 		}
 	}
 
@@ -449,4 +421,62 @@ func validateName(name string) error {
 			name, NamePattern)
 	}
 	return nil
+}
+
+func (m Manager) getVolume(name string) (vol Volume, err error) {
+	prefix := filepath.Join(m.dataDir, name) + ".*"
+	matches, err := filepath.Glob(prefix)
+	if err != nil {
+		err = errors.Wrapf(err,
+			"An issue occurred while retrieving details about volume '%s' - cannot glob data dir", name)
+		return
+	}
+	if len(matches) > 1 {
+		err = errors.Errorf("More than 1 data file found for volume '%s'", name)
+		return
+	} else if len(matches) == 0 {
+		err = errors.Errorf("Volume '%s' does not exist", name)
+		return
+	}
+
+	volumeDataFilePath := matches[0]
+	fs := strings.TrimLeft(filepath.Ext(volumeDataFilePath), ".")
+
+	volumeDataFileInfo, err := os.Stat(volumeDataFilePath)
+
+	if err != nil {
+		if os.IsNotExist(err) { // this should not happen but...
+			err = errors.Errorf("Volume '%s' disappeared just a moment ago", name)
+		}
+		return
+	}
+
+	if !volumeDataFileInfo.Mode().IsRegular() {
+		err = errors.Errorf(
+			"Volume data path expected to point to a file but it appears to be something else: '%s'",
+			volumeDataFilePath)
+		return
+	}
+
+	details, ok := volumeDataFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		err = errors.Errorf(
+			"An issue occurred while retrieving details about volume '%s' - cannot stat '%s'",
+			name, volumeDataFilePath)
+	}
+
+	mountPointPath := filepath.Join(m.mountDir, name)
+
+	vol = Volume{
+		Name:                 name,
+		Fs:                   fs,
+		AllocatedSizeInBytes: uint64(details.Blocks * 512),
+		MaxSizeInBytes:       uint64(details.Size),
+		StateDir:             filepath.Join(m.stateDir, name),
+		DataFilePath:         volumeDataFilePath,
+		MountPointPath:       mountPointPath,
+		CreatedAt:            volumeDataFileInfo.ModTime(),
+	}
+
+	return
 }

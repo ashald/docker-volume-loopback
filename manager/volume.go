@@ -8,13 +8,14 @@ import (
 )
 
 type Volume struct {
-	Name               string
-	CurrentSizeInBytes uint64
-	MaxSizeInBytes     uint64
-	StateDir           string
-	DataFilePath       string
-	MountPointPath     string
-	CreatedAt          time.Time
+	Name                 string
+	AllocatedSizeInBytes uint64
+	Fs                   string
+	MaxSizeInBytes       uint64
+	StateDir             string
+	DataFilePath         string
+	MountPointPath       string
+	CreatedAt            time.Time
 }
 
 func (v Volume) IsMounted() (mounted bool, err error) {

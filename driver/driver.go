@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -90,6 +91,17 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		}
 	}
 
+	var fs string
+	fsInput, fsPresent := req.Options["fs"]
+	if fsPresent && len(fsInput) > 0 {
+		fs = strings.ToLower(strings.TrimSpace(fsInput))
+	} else {
+		fs = "xfs"
+		logger.Debug().
+			Str("default", fs).
+			Msg("no fs opt found, using default")
+	}
+
 	uid := -1
 	uidStr, uidPresent := req.Options["uid"]
 	if uidPresent && len(uidStr) > 0 {
@@ -151,7 +163,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 
 	logger.Debug().Msg("starting creation")
 
-	err = d.manager.Create(req.Name, sizeInBytes, sparse, uid, gid, mode)
+	err = d.manager.Create(req.Name, sizeInBytes, sparse, fs, uid, gid, mode)
 	if err != nil {
 		return err
 	}
@@ -214,8 +226,9 @@ func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
 		Mountpoint: vol.MountPointPath,
 		Status: map[string]interface{}{
-			"size-max":     strconv.FormatUint(vol.MaxSizeInBytes, 10),
-			"size-current": strconv.FormatUint(vol.CurrentSizeInBytes, 10),
+			"fs":             vol.Fs,
+			"size-max":       strconv.FormatUint(vol.MaxSizeInBytes, 10),
+			"size-allocated": strconv.FormatUint(vol.AllocatedSizeInBytes, 10),
 		},
 	}
 

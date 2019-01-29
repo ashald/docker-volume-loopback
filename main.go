@@ -29,7 +29,7 @@ var (
 		StateDir:    "/run/docker-volume-loopback",
 		DataDir:     "/var/lib/docker-volume-loopback",
 		MountDir:    "/mnt",
-		DefaultSize: "1G",
+		DefaultSize: "1GiB",
 		Debug:       false,
 	}
 )

@@ -27,7 +27,7 @@
             "Description": "Default size to apply to volumes when no value is specified",
             "Name": "DEFAULT_SIZE",
             "Settable": ["value"],
-            "Value": "1G"
+            "Value": "1GiB"
         }
     ],
     "Interface": {
