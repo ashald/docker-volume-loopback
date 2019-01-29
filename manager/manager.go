@@ -170,7 +170,6 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 		return errors.Wrapf(err,
 			"Error creating volume '%s' - data dir does not exist: '%s'",
 			name, m.dataDir)
-
 	}
 
 	// create data file
@@ -184,9 +183,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 			name, dataFilePath)
 	}
 
-	fmt.Println(fmt.Sprintf("--- %v", sparse))
 	if sparse {
-		fmt.Println(fmt.Sprintf("--- Creating as sparse"))
 		err = dataFileInfo.Truncate(sizeInBytes)
 		if err != nil {
 			_ = os.Remove(dataFilePath) // attempt to cleanup
@@ -195,13 +192,11 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, uid, gid in
 				name, sizeInBytes)
 		}
 	} else {
-		fmt.Println(fmt.Sprintf("--- Creating as fallocate"))
 		// Try using fallocate - super fast if data dir is on ext4 or xfs
 		errBytes, err := exec.Command("fallocate", "-l", fmt.Sprint(sizeInBytes), dataFilePath).CombinedOutput()
 
 		// fallocate failed - either not enough space or unsupported FS
 		if err != nil {
-			fmt.Println(fmt.Sprintf("--- fallocate failed"))
 			errStr := strings.TrimSpace(string(errBytes[:]))
 
 			// If there is not enough space then we just error out

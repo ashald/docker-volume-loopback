@@ -8,3 +8,10 @@ https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=bc
 chown -1:-1
 
 ```
+
+## Development
+Go 1.11
+```bash
+go mod vendor
+go mod tidy
+```

@@ -7,7 +7,6 @@ import (
 	"github.com/docker/go-units"
 )
 
-
 func FromHumanSize(size string) (bytesInt int64, err error) {
 	if strings.Contains(strings.ToLower(size), "i") {
 		bytesInt, err = units.RAMInBytes(size)

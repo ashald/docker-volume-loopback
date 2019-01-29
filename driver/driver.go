@@ -15,12 +15,11 @@ import (
 	v "github.com/docker/go-plugins-helpers/volume"
 )
 
-
 type Config struct {
-	StateDir    		string
-	DataDir    			string
-	MountDir    		string
-	DefaultSize    		string
+	StateDir    string
+	DataDir     string
+	MountDir    string
+	DefaultSize string
 }
 
 type Driver struct {
@@ -37,9 +36,9 @@ func NewDriver(cfg Config) (d Driver, err error) {
 	}
 
 	m, err := manager.New(manager.Config{
-		StateDir:	cfg.StateDir,
-		DataDir:	cfg.DataDir,
-		MountDir:	cfg.MountDir,
+		StateDir: cfg.StateDir,
+		DataDir:  cfg.DataDir,
+		MountDir: cfg.MountDir,
 	})
 	if err != nil {
 		err = errors.Wrapf(err,
@@ -215,7 +214,7 @@ func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
 		Mountpoint: vol.MountPointPath,
 		Status: map[string]interface{}{
-			"size-max": 	strconv.FormatUint(vol.MaxSizeInBytes, 10),
+			"size-max":     strconv.FormatUint(vol.MaxSizeInBytes, 10),
 			"size-current": strconv.FormatUint(vol.CurrentSizeInBytes, 10),
 		},
 	}
@@ -298,7 +297,7 @@ func (d Driver) Mount(req *v.MountRequest) (*v.MountResponse, error) {
 	return resp, nil
 }
 
-func (d Driver) Unmount(req *v.UnmountRequest) (error) {
+func (d Driver) Unmount(req *v.UnmountRequest) error {
 	var logger = d.logger.With().
 		Str("log-id", shortid.MustGenerate()).
 		Str("method", "unmount").
@@ -318,11 +317,10 @@ func (d Driver) Unmount(req *v.UnmountRequest) (error) {
 	return err
 }
 
-func (d Driver) Capabilities() (resp *v.CapabilitiesResponse) {
-	resp = &v.CapabilitiesResponse{
+func (d Driver) Capabilities() *v.CapabilitiesResponse {
+	return &v.CapabilitiesResponse{
 		Capabilities: v.Capability{
 			Scope: "local",
 		},
 	}
-	return
 }

@@ -5,10 +5,13 @@ PLUGIN_FULL_NAME	:=	${AUTHOR}/${PLUGIN_NAME}
 ROOTFS_CONTAINER	:=	${PLUGIN_NAME}-rootfs
 ROOTFS_IMAGE		:=	${AUTHOR}/${ROOTFS_CONTAINER}
 
+all: format build
+
+format:
+	go fmt ./...
 
 build:
 	GOOS=linux GOARCH=amd64 go build -o "$(PLUGIN_NAME)"
-
 
 rootfs-image:
 	docker build -t $(ROOTFS_IMAGE) .
