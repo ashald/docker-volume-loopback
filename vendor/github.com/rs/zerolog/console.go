@@ -35,10 +35,20 @@ var (
 			return bytes.NewBuffer(make([]byte, 0, 100))
 		},
 	}
-)
 
-const (
 	consoleDefaultTimeFormat = time.Kitchen
+	consoleDefaultFormatter  = func(i interface{}) string { return fmt.Sprintf("%s", i) }
+	consoleDefaultPartsOrder = func() []string {
+		return []string{
+			TimestampFieldName,
+			LevelFieldName,
+			CallerFieldName,
+			MessageFieldName,
+		}
+	}
+
+	consoleNoColor    = false
+	consoleTimeFormat = consoleDefaultTimeFormat
 )
 
 // Formatter transforms the input into a formatted string.
@@ -89,12 +99,21 @@ func (w ConsoleWriter) Write(p []byte) (n int, err error) {
 	if w.PartsOrder == nil {
 		w.PartsOrder = consoleDefaultPartsOrder()
 	}
+	if w.TimeFormat == "" && consoleTimeFormat != consoleDefaultTimeFormat {
+		consoleTimeFormat = consoleDefaultTimeFormat
+	}
+	if w.TimeFormat != "" && consoleTimeFormat != w.TimeFormat {
+		consoleTimeFormat = w.TimeFormat
+	}
+	if w.NoColor == false && consoleNoColor != false {
+		consoleNoColor = false
+	}
+	if w.NoColor == true && consoleNoColor != w.NoColor {
+		consoleNoColor = w.NoColor
+	}
 
 	var buf = consoleBufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		consoleBufPool.Put(buf)
-	}()
+	defer consoleBufPool.Put(buf)
 
 	var evt map[string]interface{}
 	p = decodeIfBinaryToBytes(p)
@@ -111,12 +130,9 @@ func (w ConsoleWriter) Write(p []byte) (n int, err error) {
 
 	w.writeFields(evt, buf)
 
-	err = buf.WriteByte('\n')
-	if err != nil {
-		return n, err
-	}
-	_, err = buf.WriteTo(w.Out)
-	return len(p), err
+	buf.WriteByte('\n')
+	buf.WriteTo(w.Out)
+	return len(p), nil
 }
 
 // writeFields appends formatted key-value pairs to buf.
@@ -156,19 +172,19 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 
 		if field == ErrorFieldName {
 			if w.FormatErrFieldName == nil {
-				fn = consoleDefaultFormatErrFieldName(w.NoColor)
+				fn = consoleDefaultFormatErrFieldName
 			} else {
 				fn = w.FormatErrFieldName
 			}
 
 			if w.FormatErrFieldValue == nil {
-				fv = consoleDefaultFormatErrFieldValue(w.NoColor)
+				fv = consoleDefaultFormatErrFieldValue
 			} else {
 				fv = w.FormatErrFieldValue
 			}
 		} else {
 			if w.FormatFieldName == nil {
-				fn = consoleDefaultFormatFieldName(w.NoColor)
+				fn = consoleDefaultFormatFieldName
 			} else {
 				fn = w.FormatFieldName
 			}
@@ -213,13 +229,13 @@ func (w ConsoleWriter) writePart(buf *bytes.Buffer, evt map[string]interface{}, 
 	switch p {
 	case LevelFieldName:
 		if w.FormatLevel == nil {
-			f = consoleDefaultFormatLevel(w.NoColor)
+			f = consoleDefaultFormatLevel
 		} else {
 			f = w.FormatLevel
 		}
 	case TimestampFieldName:
 		if w.FormatTimestamp == nil {
-			f = consoleDefaultFormatTimestamp(w.TimeFormat, w.NoColor)
+			f = consoleDefaultFormatTimestamp
 		} else {
 			f = w.FormatTimestamp
 		}
@@ -231,7 +247,7 @@ func (w ConsoleWriter) writePart(buf *bytes.Buffer, evt map[string]interface{}, 
 		}
 	case CallerFieldName:
 		if w.FormatCaller == nil {
-			f = consoleDefaultFormatCaller(w.NoColor)
+			f = consoleDefaultFormatCaller
 		} else {
 			f = w.FormatCaller
 		}
@@ -273,65 +289,49 @@ func colorize(s interface{}, c int, disabled bool) string {
 
 // ----- DEFAULT FORMATTERS ---------------------------------------------------
 
-func consoleDefaultPartsOrder() []string {
-	return []string{
-		TimestampFieldName,
-		LevelFieldName,
-		CallerFieldName,
-		MessageFieldName,
-	}
-}
-
-func consoleDefaultFormatTimestamp(timeFormat string, noColor bool) Formatter {
-	if timeFormat == "" {
-		timeFormat = consoleDefaultTimeFormat
-	}
-	return func(i interface{}) string {
+var (
+	consoleDefaultFormatTimestamp = func(i interface{}) string {
 		t := "<nil>"
 		switch tt := i.(type) {
 		case string:
-			ts, err := time.Parse(TimeFieldFormat, tt)
+			ts, err := time.Parse(time.RFC3339, tt)
 			if err != nil {
 				t = tt
 			} else {
-				t = ts.Format(timeFormat)
+				t = ts.Format(consoleTimeFormat)
 			}
 		case json.Number:
 			t = tt.String()
 		}
-		return colorize(t, colorFaint, noColor)
+		return colorize(t, colorFaint, consoleNoColor)
 	}
-}
 
-func consoleDefaultFormatLevel(noColor bool) Formatter {
-	return func(i interface{}) string {
+	consoleDefaultFormatLevel = func(i interface{}) string {
 		var l string
 		if ll, ok := i.(string); ok {
 			switch ll {
 			case "debug":
-				l = colorize("DBG", colorYellow, noColor)
+				l = colorize("DBG", colorYellow, consoleNoColor)
 			case "info":
-				l = colorize("INF", colorGreen, noColor)
+				l = colorize("INF", colorGreen, consoleNoColor)
 			case "warn":
-				l = colorize("WRN", colorRed, noColor)
+				l = colorize("WRN", colorRed, consoleNoColor)
 			case "error":
-				l = colorize(colorize("ERR", colorRed, noColor), colorBold, noColor)
+				l = colorize(colorize("ERR", colorRed, consoleNoColor), colorBold, consoleNoColor)
 			case "fatal":
-				l = colorize(colorize("FTL", colorRed, noColor), colorBold, noColor)
+				l = colorize(colorize("FTL", colorRed, consoleNoColor), colorBold, consoleNoColor)
 			case "panic":
-				l = colorize(colorize("PNC", colorRed, noColor), colorBold, noColor)
+				l = colorize(colorize("PNC", colorRed, consoleNoColor), colorBold, consoleNoColor)
 			default:
-				l = colorize("???", colorBold, noColor)
+				l = colorize("???", colorBold, consoleNoColor)
 			}
 		} else {
 			l = strings.ToUpper(fmt.Sprintf("%s", i))[0:3]
 		}
 		return l
 	}
-}
 
-func consoleDefaultFormatCaller(noColor bool) Formatter {
-	return func(i interface{}) string {
+	consoleDefaultFormatCaller = func(i interface{}) string {
 		var c string
 		if cc, ok := i.(string); ok {
 			c = cc
@@ -342,34 +342,28 @@ func consoleDefaultFormatCaller(noColor bool) Formatter {
 				c = strings.TrimPrefix(c, cwd)
 				c = strings.TrimPrefix(c, "/")
 			}
-			c = colorize(c, colorBold, noColor) + colorize(" >", colorFaint, noColor)
+			c = colorize(c, colorBold, consoleNoColor) + colorize(" >", colorFaint, consoleNoColor)
 		}
 		return c
 	}
-}
 
-func consoleDefaultFormatMessage(i interface{}) string {
-	return fmt.Sprintf("%s", i)
-}
-
-func consoleDefaultFormatFieldName(noColor bool) Formatter {
-	return func(i interface{}) string {
-		return colorize(fmt.Sprintf("%s=", i), colorFaint, noColor)
+	consoleDefaultFormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("%s", i)
 	}
-}
 
-func consoleDefaultFormatFieldValue(i interface{}) string {
-	return fmt.Sprintf("%s", i)
-}
-
-func consoleDefaultFormatErrFieldName(noColor bool) Formatter {
-	return func(i interface{}) string {
-		return colorize(fmt.Sprintf("%s=", i), colorRed, noColor)
+	consoleDefaultFormatFieldName = func(i interface{}) string {
+		return colorize(fmt.Sprintf("%s=", i), colorFaint, consoleNoColor)
 	}
-}
 
-func consoleDefaultFormatErrFieldValue(noColor bool) Formatter {
-	return func(i interface{}) string {
-		return colorize(fmt.Sprintf("%s", i), colorRed, noColor)
+	consoleDefaultFormatFieldValue = func(i interface{}) string {
+		return fmt.Sprintf("%s", i)
 	}
-}
+
+	consoleDefaultFormatErrFieldName = func(i interface{}) string {
+		return colorize(fmt.Sprintf("%s=", i), colorRed, consoleNoColor)
+	}
+
+	consoleDefaultFormatErrFieldValue = func(i interface{}) string {
+		return colorize(fmt.Sprintf("%s", i), colorRed, consoleNoColor)
+	}
+)
