@@ -81,7 +81,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 	}
 
 	sparse := false
-	sparseStr, sparsePresent := req.Options["sparsePresent"]
+	sparseStr, sparsePresent := req.Options["sparse"]
 	if sparsePresent {
 		sparse, err = strconv.ParseBool(sparseStr)
 		if err != nil {

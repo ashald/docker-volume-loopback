@@ -160,7 +160,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 		if err != nil {
 			_ = os.Remove(dataFilePath) // attempt to cleanup
 			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot allocate '%s' bytes",
+				"Error creating volume '%s' - error creating data file",
 				name, sizeInBytes)
 		}
 	} else {
