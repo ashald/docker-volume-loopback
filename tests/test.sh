@@ -4,11 +4,19 @@
 
 IMAGE="alpine"
 DRIVER="docker-volume-loopback"
+DATA_DIR="/var/lib/${DRIVER}"
 
-#random () {
-#    echo "$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 32 | head -n 1)"
-#}
 
-#VOLUME="$(random)"
+setUp() {
+    HANDLE=$(mktemp -u)
+    truncate -s "${1:-2GiB}" "${HANDLE}"
+    mkfs.xfs "${HANDLE}" &> /dev/null
+    mount -o nouuid "${HANDLE}" "${DATA_DIR}"
+}
+
+tearDown() {
+    umount -ld "${DATA_DIR}"
+    rm -f "${HANDLE}"
+}
 
 . ./shunit2
