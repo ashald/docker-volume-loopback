@@ -146,22 +146,15 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 
 	// create data file
 	dataFilePath := filepath.Join(m.dataDir, name+"."+fs)
-	dataFileInfo, err := os.Create(dataFilePath)
-	if err != nil {
-		_ = os.Remove(dataFilePath) // attempt to cleanup
-
-		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot create datafile '%s'",
-			name, dataFilePath)
-	}
 
 	if sparse {
-		err = dataFileInfo.Truncate(sizeInBytes)
+		errBytes, err := exec.Command("truncate", "-s", fmt.Sprint(sizeInBytes), dataFilePath).CombinedOutput()
 		if err != nil {
+			errStr := strings.TrimSpace(string(errBytes[:]))
 			_ = os.Remove(dataFilePath) // attempt to cleanup
 			return errors.Wrapf(err,
-				"Error creating volume '%s' - error creating data file",
-				name, sizeInBytes)
+				"Error creating volume '%s' - error creating sparse data file: %s",
+				name, errStr)
 		}
 	} else {
 		// Try using fallocate - super fast if data dir is on ext4 or xfs
