@@ -6,6 +6,9 @@ IMAGE="alpine"
 DRIVER="docker-volume-loopback"
 DATA_DIR="/var/lib/${DRIVER}"
 
+oneTimeSetUp() {
+    docker volume rm $(docker volume create -d "${DRIVER}" -o size=100MiB) &> /dev/null
+}
 
 setUp() {
     HANDLE=$(mktemp -u)
