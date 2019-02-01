@@ -2,22 +2,6 @@
 
 FS="ext4"
 
-testRegularVolumeDoesNotReserveDiskSpace() {
-    local volume info allocated_size apparent_size
-    # setup
-    volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=false)
-
-    info=$(ls --block-size=M -ls "/var/lib/${DRIVER}/${volume}.${FS}")
-    allocated_size=$(echo ${info} | awk '{print $1}' | tr -dc '0-9')
-    apparent_size=$(echo ${info} | awk '{print $6}' | tr -dc '0-9')
-
-    # checks
-    assertTrue "Regular ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"
-
-    # cleanup
-    docker volume rm "${volume}" > /dev/null
-}
-
 testRegularVolumeChecksDiskSpaceBeforeFormatting() {
     local error result count
     # setup
@@ -32,6 +16,22 @@ testRegularVolumeChecksDiskSpaceBeforeFormatting() {
     # checks
     assertEquals "1" "${result}"
     assertEquals "0" "${count}"
+}
+
+testRegularVolumeDoesNotReserveDiskSpace() {
+    local volume info allocated_size apparent_size
+    # setup
+    volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=false)
+
+    info=$(ls --block-size=M -ls "/var/lib/${DRIVER}/${volume}.${FS}")
+    allocated_size=$(echo ${info} | awk '{print $1}' | tr -dc '0-9')
+    apparent_size=$(echo ${info} | awk '{print $6}' | tr -dc '0-9')
+
+    # checks
+    assertTrue "Regular ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"
+
+    # cleanup
+    docker volume rm "${volume}" > /dev/null
 }
 
 testSparseVolumeDoesNotCheckAvailableDiskSpace() {

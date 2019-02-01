@@ -25,22 +25,12 @@ TODO:
 - check if xfs bug manifests after fallocate
 - check if xfs bug manifests via docker containers
 - check if '-o nouuid' works with ext4 
-- add '-o nouuid'
-- add test that volume can be remounted after adding some data
-
-create sparse  ext4 volume of 1GiB on a 100 MiB disk - success
-create regular ext4 volume of 1GiB on a 100 Mib disk - fail  
-
-create sparse  xfs volume of 1GiB on a 100 MiB disk - success
-create regular xfs volume of 1GiB on a 100 MiB disk - fail
+- add '-o nouuid'  
 
 on ext4/xfs vs ext3
-
-not enough space - data file should be cleaned up
 
 uid/gid - default & custom
 
 mode - default & custom
 
 inspect - should export status fields
-
