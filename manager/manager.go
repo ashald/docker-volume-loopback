@@ -15,6 +15,16 @@ import (
 var (
 	NamePattern = `^[a-zA-Z0-9][\w\-]{1,250}$`
 	NameRegex   = regexp.MustCompile(NamePattern)
+
+	MkFsOptions = map[string][]string{
+		"ext4": {"-F"},
+		"xfs":  {},
+	}
+
+	MountOptions = map[string][]string{
+		"ext4": {},
+		"xfs":  {"-o", "nouuid"},
+	}
 )
 
 type Manager struct {
@@ -126,12 +136,8 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 	}
 
 	// We perform fs validation and construct mkfs flags array on the way
-	var mkfsFlags []string
-	if fs == "xfs" {
-		mkfsFlags = []string{}
-	} else if fs == "ext4" {
-		mkfsFlags = []string{"-F"}
-	} else {
+	mkfsFlags, ok := MkFsOptions[fs]
+	if !ok {
 		return errors.Errorf(
 			"Error creating volume '%s' - only xfs and ext4 filesystems are supported, '%s' requested",
 			name, fs)
@@ -299,13 +305,18 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 				"Error mounting volume '%s' - cannot create mount point dir",
 				name)
 		}
-		mountCmd := exec.Command("mount", vol.DataFilePath, vol.MountPointPath)
-		_, err = mountCmd.Output()
+		// we should've validated FS by now if it's not found then we will get empty list of options
+		mountFlags := MountOptions[vol.Fs]
+		errBytes, err := exec.Command(
+			"mount",
+			append(mountFlags, vol.DataFilePath, vol.MountPointPath)...,
+		).CombinedOutput()
 		if err != nil {
+			errStr := strings.TrimSpace(string(errBytes[:]))
 			_ = os.Remove(leaseFile) // attempt to cleanup
 			return failedResult, errors.Wrapf(err,
-				"Error mounting volume '%s' - cannot mount vessel '%s' at '%s'",
-				name, vol.DataFilePath, vol.MountPointPath)
+				"Error mounting volume '%s' - cannot mount data file '%s' at '%s': %s",
+				name, vol.DataFilePath, vol.MountPointPath, errStr)
 		}
 	}
 	return vol.MountPointPath, nil
@@ -349,11 +360,15 @@ func (m Manager) UnMount(name string, lease string) error {
 				name, lease)
 		}
 
-		err := syscall.Unmount(vol.MountPointPath, syscall.MNT_DETACH)
+		errBytes, err := exec.Command(
+			"umount",
+			"-ld", vol.MountPointPath,
+		).CombinedOutput()
 		if err != nil {
+			errStr := strings.TrimSpace(string(errBytes[:]))
 			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot unmount vessel '%s' from mount point '%s'",
-				name, vol.DataFilePath, vol.MountPointPath)
+				"Error un-mounting volume '%s' - cannot unmount data file '%s' from mount point '%s': %s",
+				name, vol.DataFilePath, vol.MountPointPath, errStr)
 		}
 		err = os.RemoveAll(vol.MountPointPath)
 		if err != nil {

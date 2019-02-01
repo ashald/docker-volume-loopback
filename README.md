@@ -21,12 +21,6 @@ go mod tidy
 ```
 
 ## Test
-TODO:
-- check if xfs bug manifests after fallocate
-- check if xfs bug manifests via docker containers
-- check if '-o nouuid' works with ext4 
-- add '-o nouuid'  
-
 on ext4/xfs vs ext3
 
 uid/gid - default & custom
