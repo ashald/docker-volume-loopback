@@ -20,9 +20,6 @@ go mod vendor
 go mod tidy
 ```
 
-## Test
-inspect - should export status fields
-
 # Extra
 validate options
 

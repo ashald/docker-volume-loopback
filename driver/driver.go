@@ -3,6 +3,7 @@ package driver
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +30,8 @@ type Driver struct {
 	manager     *manager.Manager
 	sync.Mutex
 }
+
+var AllowedOptions = []string{"size", "sparse", "fs", "uid", "gid", "mode"}
 
 func NewDriver(cfg Config) (d Driver, err error) {
 	if cfg.DefaultSize == "" {
@@ -64,6 +67,26 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		Str("opts-size", req.Options["size"]).
 		Logger()
 
+	// 1st - let's validate incoming option names
+	allowedOptionsSet := make(map[string]struct{})
+	for _, option := range AllowedOptions {
+		allowedOptionsSet[option] = struct{}{}
+	}
+	var wrongOptions []string
+	for k := range req.Options {
+		_, allowed := allowedOptionsSet[k]
+		if !allowed {
+			wrongOptions = append(wrongOptions, k)
+		}
+	}
+	if len(wrongOptions) > 0 {
+		sort.Strings(wrongOptions)
+		return errors.Errorf(
+			"options '%s' are not among supported ones: %s",
+			strings.Join(wrongOptions, ", "), strings.Join(AllowedOptions, ", "))
+	}
+
+	// 2nd - parse 'size' option if present
 	size, sizePresent := req.Options["size"]
 
 	if !sizePresent {
@@ -75,22 +98,20 @@ func (d Driver) Create(req *v.CreateRequest) error {
 
 	sizeInBytes, err := FromHumanSize(size)
 	if err != nil {
-		return errors.Errorf(
-			"couldn't convert specified size [%s] into bytes",
-			size)
+		return errors.Errorf("cannot convert 'size' option value '%s' into bytes", size)
 	}
 
+	// 3rd - parse 'sparse' option if present
 	sparse := false
 	sparseStr, sparsePresent := req.Options["sparse"]
 	if sparsePresent {
 		sparse, err = strconv.ParseBool(sparseStr)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse 'sparse' option value '%s' as bool",
-				req.Name, sparseStr)
+			return errors.Wrapf(err, "cannot parse 'sparse' option value '%s' as bool", sparseStr)
 		}
 	}
 
+	// 4th - parse 'fs' option if present
 	var fs string
 	fsInput, fsPresent := req.Options["fs"]
 	if fsPresent && len(fsInput) > 0 {
@@ -102,19 +123,16 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			Msg("no fs opt found, using default")
 	}
 
+	// 5th - parse 'uid' option if present
 	uid := -1
 	uidStr, uidPresent := req.Options["uid"]
 	if uidPresent && len(uidStr) > 0 {
 		uid, err = strconv.Atoi(uidStr)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse 'uid' option value '%s' as an integer",
-				req.Name, uidStr)
+			return errors.Wrapf(err, "cannot parse 'uid' option value '%s' as an integer", uidStr)
 		}
 		if uid < 0 {
-			return errors.Errorf(
-				"Error creating volume '%s' - 'uid' option should be >= 0 but received '%d'",
-				req.Name, uid)
+			return errors.Errorf("'uid' option should be >= 0 but received '%d'", uid)
 		}
 
 		logger.Debug().
@@ -122,19 +140,16 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			Msg("set volume root uid")
 	}
 
+	// 6th - parse 'gid' option if present
 	gid := -1
 	gidStr, gidPresent := req.Options["gid"]
 	if gidPresent && len(gidStr) > 0 {
 		gid, err = strconv.Atoi(gidStr)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse 'gid' option value '%s' as an integer",
-				req.Name, gidStr)
+			return errors.Wrapf(err, "cannot parse 'gid' option value '%s' as an integer", gidStr)
 		}
 		if gid < 0 {
-			return errors.Errorf(
-				"Error creating volume '%s' - 'gid' option should be >= 0 but received '%d'",
-				req.Name, gid)
+			return errors.Errorf("'gid' option should be >= 0 but received '%d'", gid)
 		}
 
 		logger.Debug().
@@ -142,6 +157,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			Msg("set volume root gid")
 	}
 
+	// 7th - parse 'mode' option if present
 	var mode uint32
 	modeStr, modePresent := req.Options["mode"]
 	if modePresent && len(modeStr) > 0 {
@@ -151,19 +167,17 @@ func (d Driver) Create(req *v.CreateRequest) error {
 
 		modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse mode '%s' as positive 4-position octal",
-				req.Name, modeStr)
+			return errors.Wrapf(err, "cannot parse mode '%s' as positive 4-position octal", modeStr)
 		}
 
 		if modeParsed <= 0 || modeParsed > 07777 {
-			return errors.Errorf(
-				"Error creating volume '%s' - mode value '%s' does not fall between 0 and 7777 in octal encoding",
-				req.Name, modeStr)
+			return errors.Errorf("mode value '%s' does not fall between 0 and 7777 in octal encoding", modeStr)
 		}
 
 		mode = uint32(modeParsed)
 	}
+
+	// Finally - attempt creating a volume
 
 	d.Lock()
 	defer d.Unlock()
@@ -172,11 +186,11 @@ func (d Driver) Create(req *v.CreateRequest) error {
 
 	err = d.manager.Create(req.Name, sizeInBytes, sparse, fs, uid, gid, mode)
 	if err != nil {
+		logger.Debug().Msg("failed creating volume")
 		return err
 	}
 
 	logger.Debug().Msg("finished creating volume")
-
 	return nil
 }
 

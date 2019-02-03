@@ -111,9 +111,7 @@ func (m Manager) List() ([]Volume, error) {
 func (m Manager) Get(name string) (vol Volume, err error) {
 	err = validateName(name)
 	if err != nil {
-		err = errors.Wrapf(err,
-			"Error creating volume '%s' - invalid volume name",
-			name)
+		err = errors.Wrapf(err, "invalid volume name")
 		return
 	}
 
@@ -124,30 +122,23 @@ func (m Manager) Get(name string) (vol Volume, err error) {
 func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, uid, gid int, mode uint32) error {
 	err := validateName(name)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error creating volume '%s' - invalid volume name",
-			name)
+		return errors.Wrapf(err, "invalid volume name")
 	}
 
-	if sizeInBytes < 10e6 {
+	if sizeInBytes < 20e6 {
 		return errors.Errorf(
-			"Error creating volume '%s' - requested size '%s' is smaller than minimum allowed 10MB",
-			name, sizeInBytes)
+			"requested size '%d' is smaller than minimum allowed 20MB", sizeInBytes)
 	}
 
 	// We perform fs validation and construct mkfs flags array on the way
 	mkfsFlags, ok := MkFsOptions[fs]
 	if !ok {
-		return errors.Errorf(
-			"Error creating volume '%s' - only xfs and ext4 filesystems are supported, '%s' requested",
-			name, fs)
+		return errors.Errorf("only xfs and ext4 filesystems are supported, '%s' requested", fs)
 	}
 
 	err = os.MkdirAll(m.dataDir, 0755)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot create data dir: '%s'",
-			name, m.dataDir)
+		return errors.Wrapf(err, "cannot create data dir: '%s'", m.dataDir)
 	}
 
 	// create data file
@@ -158,9 +149,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 		if err != nil {
 			errStr := strings.TrimSpace(string(errBytes[:]))
 			_ = os.Remove(dataFilePath) // attempt to cleanup
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - error creating sparse data file: %s",
-				name, errStr)
+			return errors.Wrapf(err, "error creating sparse data file: %s", errStr)
 		}
 	} else {
 		// Try using fallocate - super fast if data dir is on ext4 or xfs
@@ -173,13 +162,12 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 			// If there is not enough space then we just error out
 			if strings.Contains(errStr, "No space") {
 				_ = os.Remove(dataFilePath) // Primitive attempt to cleanup
-				return errors.Wrapf(err,
-					"Error creating volume '%s' - not enough disk space: '%s'", name, errStr)
+				return errors.Wrapf(err, "not enough disk space: '%s'", errStr)
 			}
 
 			// Here we assume that FS is unsupported and will fall back to 'dd' which is slow but should work everywhere
 			of := "of=" + dataFilePath
-			bs := int64(1000000)
+			bs := int64(1e6)
 			count := sizeInBytes / bs // we lose some precision here but it's likely to be negligible
 			errBytes, err = exec.Command(
 				"dd",
@@ -190,8 +178,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 			if err != nil {
 				errStr = strings.TrimSpace(string(errBytes[:]))
 				_ = os.Remove(dataFilePath) // Primitive attempt to cleanup
-				return errors.Wrapf(err,
-					"Error creating volume '%s' - '%s'", name, errStr)
+				return errors.Wrapf(err, errStr)
 			}
 		}
 	}
@@ -201,9 +188,8 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 	if err != nil {
 		errStr := strings.TrimSpace(string(errBytes[:]))
 		_ = os.Remove(dataFilePath) // attempt to cleanup
-		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot format datafile as %s filesystem: %s",
-			name, fs, errStr)
+		return errors.Wrapf(err, "cannot format datafile as %s filesystem: %s",
+			fs, errStr)
 	}
 
 	// At this point we're done - last step is to adjust ownership and mode if required.
@@ -214,9 +200,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 		mountPath, err := m.Mount(name, lease)
 		if err != nil {
 			_ = os.Remove(dataFilePath) // attempt to cleanup
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot mount volume to adjust its root owner/permissions",
-				name)
+			return errors.Wrapf(err, "cannot mount volume to adjust its root owner/permissions")
 		}
 		if mode > 0 {
 			errBytes, err := exec.Command("chmod", fmt.Sprintf("%#o", mode), mountPath).CombinedOutput()
@@ -224,9 +208,7 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 				errStr := strings.TrimSpace(string(errBytes[:]))
 				_ = m.UnMount(name, lease)
 				_ = os.Remove(dataFilePath) // attempt to cleanup
-				return errors.Wrapf(err,
-					"Error creating volume '%s' - cannot adjust volume root permissions: %s",
-					name, errStr)
+				return errors.Wrapf(err, "cannot adjust volume root permissions: %s", errStr)
 			}
 		}
 
@@ -235,18 +217,14 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 			if err != nil {
 				_ = m.UnMount(name, lease)
 				_ = os.Remove(dataFilePath) // attempt to cleanup
-				return errors.Wrapf(err,
-					"Error creating volume '%s' - cannot adjust volume root owner",
-					name)
+				return errors.Wrapf(err, "cannot adjust volume root owner")
 			}
 		}
 
 		err = m.UnMount(name, lease)
 		if err != nil {
 			_ = os.Remove(dataFilePath) // attempt to cleanup
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot unmount volume after adjusting its root owner/permissions",
-				name)
+			return errors.Wrapf(err, "cannot unmount volume after adjusting its root owner/permissions")
 		}
 	}
 
@@ -258,19 +236,17 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 
 	err := validateName(name)
 	if err != nil {
-		return failedResult, errors.Wrapf(err,
-			"Error mounting volume '%s' - invalid volume name",
-			name)
+		return failedResult, err
 	}
 
 	vol, err := m.getVolume(name)
 	if err != nil {
-		return failedResult, errors.Wrapf(err, "Error mounting volume '%s' - cannot get its metadata", name)
+		return failedResult, errors.Wrap(err, "cannot get its metadata")
 	}
 
 	isAlreadyMounted, err := vol.IsMounted() // checking mount status early before we record a lease
 	if err != nil {
-		return failedResult, errors.Wrapf(err, "Error mounting volume '%s' - cannot check its mount status", name)
+		return failedResult, errors.Wrap(err, "cannot check volume mount status")
 	}
 
 	_, err = os.Stat(vol.StateDir)
@@ -279,9 +255,7 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(vol.StateDir, 0755)
 			if err != nil {
-				return failedResult, errors.Wrapf(err,
-					"Error mounting volume '%s' - cannot create its state dir",
-					name)
+				return failedResult, errors.Wrap(err, "cannot create volume state dir")
 			}
 		}
 	}
@@ -290,25 +264,19 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 	_, err = os.Stat(leaseFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return failedResult, errors.Wrapf(err,
-				"Error mounting volume '%s' - cannot access lease file '%s'",
-				name, leaseFile)
+			return failedResult, errors.Wrapf(err, "cannot access lease file '%s'", leaseFile)
 		}
 	}
 	_, err = os.Create(leaseFile)
 	if err != nil {
-		return failedResult, errors.Wrapf(err,
-			"Error mounting volume '%s' - cannot create lease file '%s'",
-			name, lease)
+		return failedResult, errors.Wrapf(err, "cannot create lease file '%s'", lease)
 	}
 
 	if !isAlreadyMounted {
 		err = os.Mkdir(vol.MountPointPath, 0777)
 		if err != nil {
 			_ = os.Remove(leaseFile) // attempt to cleanup
-			return failedResult, errors.Wrapf(err,
-				"Error mounting volume '%s' - cannot create mount point dir",
-				name)
+			return failedResult, errors.Wrapf(err, "cannot create mount point dir '%s'", vol.MountPointPath)
 		}
 		// we should've validated FS by now if it's not found then we will get empty list of options
 		mountFlags := MountOptions[vol.Fs]
@@ -320,8 +288,8 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 			errStr := strings.TrimSpace(string(errBytes[:]))
 			_ = os.Remove(leaseFile) // attempt to cleanup
 			return failedResult, errors.Wrapf(err,
-				"Error mounting volume '%s' - cannot mount data file '%s' at '%s': %s",
-				name, vol.DataFilePath, vol.MountPointPath, errStr)
+				"cannot mount data file '%s' at '%s': %s",
+				vol.DataFilePath, vol.MountPointPath, errStr)
 		}
 	}
 	return vol.MountPointPath, nil
@@ -330,39 +298,30 @@ func (m Manager) Mount(name string, lease string) (string, error) {
 func (m Manager) UnMount(name string, lease string) error {
 	err := validateName(name)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error un-mounting volume '%s' - invalid volume name",
-			name)
+		return err
 	}
 
 	vol, err := m.getVolume(name)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error un-mounting volume '%s' - cannot get its metadata",
-			name)
+		return errors.Wrap(err, "cannot get volume metadata")
 	}
 
 	leaseFile := filepath.Join(vol.StateDir, lease)
 	err = os.Remove(leaseFile)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error un-mounting volume '%s' - cannot find lease '%s'",
-			name, lease)
+		return errors.Wrapf(err, "cannot find lease '%s'", lease)
 	}
 
 	isMountedSomewhereElse, err := vol.IsMounted()
 	if err != nil {
 		return errors.Wrapf(err,
-			"Error un-mounting volume '%s' - cannot figure out if it's used somewhere else",
-			name, lease)
+			"cannot figure out if it's used somewhere else", lease)
 	}
 
 	if !isMountedSomewhereElse {
 		err = os.RemoveAll(vol.StateDir)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot remove its state dir",
-				name, lease)
+			return errors.Wrapf(err, "cannot remove its state dir", lease)
 		}
 
 		errBytes, err := exec.Command(
@@ -372,14 +331,12 @@ func (m Manager) UnMount(name string, lease string) error {
 		if err != nil {
 			errStr := strings.TrimSpace(string(errBytes[:]))
 			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot unmount data file '%s' from mount point '%s': %s",
-				name, vol.DataFilePath, vol.MountPointPath, errStr)
+				"cannot unmount data file '%s' from mount point '%s': %s",
+				vol.DataFilePath, vol.MountPointPath, errStr)
 		}
 		err = os.RemoveAll(vol.MountPointPath)
 		if err != nil {
-			return errors.Wrapf(err,
-				"Error un-mounting volume '%s' - cannot remove mount point dir '%s'",
-				name, vol.MountPointPath)
+			return errors.Wrapf(err, "cannot remove mount point dir '%s'", vol.MountPointPath)
 		}
 	}
 
@@ -389,35 +346,25 @@ func (m Manager) UnMount(name string, lease string) error {
 func (m Manager) Delete(name string) error {
 	err := validateName(name)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error deleting volume '%s' - invalid volume name",
-			name)
+		return err
 	}
 
 	vol, err := m.Get(name)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error deleting volume '%s' - cannot get its metadata",
-			name)
+		return errors.Wrap(err, "cannot get volume metadata")
 	}
 
 	isMounted, err := vol.IsMounted()
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error deleting volume '%s' - cannot get its mount status.",
-			name)
+		return errors.Wrap(err, "cannot get volume mount status")
 	}
 	if isMounted {
-		return errors.Wrapf(err,
-			"Error deleting volume '%s' - still in use",
-			name)
+		return errors.Wrap(err, "volume still in use")
 	}
 
 	err = os.Remove(vol.DataFilePath)
 	if err != nil {
-		return errors.Wrapf(err,
-			"Error deleting volume '%s' - cannot delete '%s'",
-			name, vol.DataFilePath)
+		return errors.Wrapf(err, "cannot delete '%s'", vol.DataFilePath)
 	}
 
 	return nil
@@ -425,12 +372,12 @@ func (m Manager) Delete(name string) error {
 
 func validateName(name string) error {
 	if name == "" {
-		return errors.Errorf("Volume name cannot be an empty string")
+		return errors.New("volume name cannot be an empty string")
 	}
 
 	if !NameRegex.MatchString(name) {
 		return errors.Errorf(
-			"Volume name '%s' does nto match allowed pattern '%s'",
+			"volume name '%s' does not match allowed pattern '%s'",
 			name, NamePattern)
 	}
 	return nil
@@ -441,14 +388,14 @@ func (m Manager) getVolume(name string) (vol Volume, err error) {
 	matches, err := filepath.Glob(prefix)
 	if err != nil {
 		err = errors.Wrapf(err,
-			"An issue occurred while retrieving details about volume '%s' - cannot glob data dir", name)
+			"an issue occurred while retrieving details about volume '%s' - cannot glob data dir", name)
 		return
 	}
 	if len(matches) > 1 {
-		err = errors.Errorf("More than 1 data file found for volume '%s'", name)
+		err = errors.Errorf("more than 1 data file found for volume '%s'", name)
 		return
 	} else if len(matches) == 0 {
-		err = errors.Errorf("Volume '%s' does not exist", name)
+		err = errors.Errorf("volume '%s' does not exist", name)
 		return
 	}
 
@@ -459,14 +406,14 @@ func (m Manager) getVolume(name string) (vol Volume, err error) {
 
 	if err != nil {
 		if os.IsNotExist(err) { // this should not happen but...
-			err = errors.Errorf("Volume '%s' disappeared just a moment ago", name)
+			err = errors.Errorf("volume '%s' disappeared just a moment ago", name)
 		}
 		return
 	}
 
 	if !volumeDataFileInfo.Mode().IsRegular() {
 		err = errors.Errorf(
-			"Volume data path expected to point to a file but it appears to be something else: '%s'",
+			"volume data path expected to point to a file but it appears to be something else: '%s'",
 			volumeDataFilePath)
 		return
 	}
@@ -474,7 +421,7 @@ func (m Manager) getVolume(name string) (vol Volume, err error) {
 	details, ok := volumeDataFileInfo.Sys().(*syscall.Stat_t)
 	if !ok {
 		err = errors.Errorf(
-			"An issue occurred while retrieving details about volume '%s' - cannot stat '%s'",
+			"an issue occurred while retrieving details about volume '%s' - cannot stat '%s'",
 			name, volumeDataFilePath)
 	}
 
