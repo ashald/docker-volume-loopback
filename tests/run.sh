@@ -5,7 +5,7 @@ result=0
 for suite in $(dirname ${0})/test_*; do
     echo "--- Executing '$(basename ${suite} .sh)' ---"
 
-    ( cd $(dirname "${suite}"); ./"$(basename ${suite})" 2>&1; )
+    ( cd $(dirname "${suite}"); time ./"$(basename ${suite})" 2>&1; )
 
     test "${result}" -eq 0 -a $? -eq 0
     result=$?
