@@ -21,13 +21,11 @@ go mod tidy
 ```
 
 ## Test
-uid/gid - default & custom
-
-mode - default & custom
-
 inspect - should export status fields
 
 # Extra
+validate options
+
 if _, err := exec.LookPath("mkfs.xfs"); err != nil {
 		logrus.Fatal("mkfs.xfs is not available, please install xfsprogs to continue")
 	}

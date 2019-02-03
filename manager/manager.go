@@ -197,16 +197,18 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 	}
 
 	// format data file
-	_, err = exec.Command(fmt.Sprintf("mkfs.%s", fs), append(mkfsFlags, dataFilePath)...).Output()
+	errBytes, err := exec.Command("mkfs."+fs, append(mkfsFlags, dataFilePath)...).CombinedOutput()
 	if err != nil {
+		errStr := strings.TrimSpace(string(errBytes[:]))
 		_ = os.Remove(dataFilePath) // attempt to cleanup
 		return errors.Wrapf(err,
-			"Error creating volume '%s' - cannot format datafile as %s filesystem",
-			name, fs)
+			"Error creating volume '%s' - cannot format datafile as %s filesystem: %s",
+			name, fs, errStr)
 	}
 
-	// At this point we're done - last step is to adjust ownership if required.
-	if uid >= 0 || gid >= 0 {
+	// At this point we're done - last step is to adjust ownership and mode if required.
+
+	if uid >= 0 || gid >= 0 || mode > 0 {
 		lease := "driver"
 
 		mountPath, err := m.Mount(name, lease)
@@ -216,24 +218,27 @@ func (m Manager) Create(name string, sizeInBytes int64, sparse bool, fs string, 
 				"Error creating volume '%s' - cannot mount volume to adjust its root owner/permissions",
 				name)
 		}
-
 		if mode > 0 {
-			err = os.Chmod(mountPath, os.FileMode(mode))
+			errBytes, err := exec.Command("chmod", fmt.Sprintf("%#o", mode), mountPath).CombinedOutput()
+			if err != nil {
+				errStr := strings.TrimSpace(string(errBytes[:]))
+				_ = m.UnMount(name, lease)
+				_ = os.Remove(dataFilePath) // attempt to cleanup
+				return errors.Wrapf(err,
+					"Error creating volume '%s' - cannot adjust volume root permissions: %s",
+					name, errStr)
+			}
+		}
+
+		if uid >= 0 || gid >= 0 {
+			err = os.Chown(mountPath, uid, gid)
 			if err != nil {
 				_ = m.UnMount(name, lease)
 				_ = os.Remove(dataFilePath) // attempt to cleanup
 				return errors.Wrapf(err,
-					"Error creating volume '%s' - cannot adjust volume root permissions",
+					"Error creating volume '%s' - cannot adjust volume root owner",
 					name)
 			}
-		}
-		err = os.Chown(mountPath, uid, gid)
-		if err != nil {
-			_ = m.UnMount(name, lease)
-			_ = os.Remove(dataFilePath) // attempt to cleanup
-			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot adjust volume root owner",
-				name)
 		}
 
 		err = m.UnMount(name, lease)

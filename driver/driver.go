@@ -150,11 +150,18 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			Msg("will parse as octal")
 
 		modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
-		if err != nil || modeParsed <= 0 || modeParsed > 07777 {
+		if err != nil {
 			return errors.Wrapf(err,
-				"Error creating volume '%s' - cannot parse mode '%s' as 4-position octal",
+				"Error creating volume '%s' - cannot parse mode '%s' as positive 4-position octal",
 				req.Name, modeStr)
 		}
+
+		if modeParsed <= 0 || modeParsed > 07777 {
+			return errors.Errorf(
+				"Error creating volume '%s' - mode value '%s' does not fall between 0 and 7777 in octal encoding",
+				req.Name, modeStr)
+		}
+
 		mode = uint32(modeParsed)
 	}
 
