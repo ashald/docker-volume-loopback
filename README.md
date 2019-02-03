@@ -21,10 +21,13 @@ go mod tidy
 ```
 
 ## Test
-on ext4/xfs vs ext3
-
 uid/gid - default & custom
 
 mode - default & custom
 
 inspect - should export status fields
+
+# Extra
+if _, err := exec.LookPath("mkfs.xfs"); err != nil {
+		logrus.Fatal("mkfs.xfs is not available, please install xfsprogs to continue")
+	}

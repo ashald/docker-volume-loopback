@@ -12,9 +12,23 @@ oneTimeSetUp() {
 
 setUp() {
     HANDLE=$(mktemp -u)
-    truncate -s "${1:-2GiB}" "${HANDLE}"
-    mkfs.xfs "${HANDLE}" &> /dev/null
-    mount -o nouuid "${HANDLE}" "${DATA_DIR}"
+    truncate -s "${BASE_SIZE:-2G}" "${HANDLE}"
+
+
+    case "${BASE_FS:-xfs}" in
+    xfs)
+        mkfs.xfs "${HANDLE}" &> /dev/null
+        mount -o nouuid "${HANDLE}" "${DATA_DIR}"
+        ;;
+    ext*)
+        mkfs.${BASE_FS} -F "${HANDLE}" &> /dev/null
+        mount "${HANDLE}" "${DATA_DIR}"
+        ;;
+    *)
+        echo "Unsupported BASE fs"
+        exit 1
+        ;;
+    esac
 }
 
 tearDown() {
