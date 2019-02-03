@@ -4,18 +4,21 @@ BASE_SIZE="100M"
 BASE_FS="ext3"
 
 testFallbackToDdFromFallocateOnUnsupportedFs() {
-    local error result count
+    local volume result count
     # setup
 
     ## for sparse=false we use fallocate and fallback to dd if fallocate is not supported
-    error=$(docker volume create -d "${DRIVER}" -o fs=xfs -o sparse=false -o size=50MiB 2>&1)
+    volume=$(docker volume create -d "${DRIVER}" -o fs=xfs -o sparse=false -o size=50MiB 2>&1)
     result=$?
 
     ## because we shadow real data dir with our test volume we're sure there shouldn't be any volumes
     count=$(ls -1 "/var/lib/${DRIVER}/" | grep -v "lost+found" | wc -l)
 
-    assertEquals "0" "${result}"
-    assertEquals "1" "${count}"
+    assertEquals "Volume creation should succeed" "0" "${result}"
+    assertEquals "There should be 1 volume" "1" "${count}"
+
+    # cleanup
+    docker volume rm "${volume}" > /dev/null
 }
 
 testDdFailureScenarioWhenThereIsNotEnoughDiskSpace() {
@@ -29,8 +32,8 @@ testDdFailureScenarioWhenThereIsNotEnoughDiskSpace() {
     ## because we shadow real data dir with our test volume we're sure there shouldn't be any volumes
     count=$(ls -1 "/var/lib/${DRIVER}/" | grep -v "lost+found" | wc -l)
 
-    assertEquals "1" "${result}"
-    assertEquals "0" "${count}"
+    assertEquals "Volume creation should fail" "1" "${result}"
+    assertEquals "There should be no volumes" "0" "${count}"
 }
 
 . test.sh

@@ -16,7 +16,7 @@ testDefaultVolumeSize() {
 testCustomVolumeSize() {
     local volume size
     # setup
-    volume=$(docker volume create -d "${DRIVER}" -o size=100Mi)
+    volume=$(docker volume create -d "${DRIVER}" -o size=100MiB)
     size=$(docker run --rm -it -v "${volume}:/srv" "${IMAGE}" df -m /srv | tail -1 | awk '{print $2}')
 
     # checks

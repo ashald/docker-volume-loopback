@@ -113,7 +113,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		}
 		if uid < 0 {
 			return errors.Errorf(
-				"Error creating volume '%s' - 'uid' option should be >= 0 but received '%s'",
+				"Error creating volume '%s' - 'uid' option should be >= 0 but received '%d'",
 				req.Name, uid)
 		}
 
@@ -133,7 +133,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		}
 		if gid < 0 {
 			return errors.Errorf(
-				"Error creating volume '%s' - 'gid' option should be >= 0 but received '%s'",
+				"Error creating volume '%s' - 'gid' option should be >= 0 but received '%d'",
 				req.Name, gid)
 		}
 
