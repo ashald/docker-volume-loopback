@@ -28,10 +28,16 @@
             "Name": "DEFAULT_SIZE",
             "Settable": ["value"],
             "Value": "1GiB"
+        },
+        {
+            "Description": "Path to the plugin UNIX socket",
+            "Name": "SOCKET",
+            "Settable": [],
+            "Value": "/run/docker/plugins/docker-volume-loop.sock"
         }
     ],
     "Interface": {
-        "Socket": "docker-volume-loopback.sock",
+        "Socket": "docker-volume-loop.sock",
         "Types": ["docker.volumedriver/1.0"]
     },
     "Linux": {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 
 	"github.com/alexflint/go-arg"
 	"github.com/rs/zerolog"
@@ -11,11 +12,8 @@ import (
 	v "github.com/docker/go-plugins-helpers/volume"
 )
 
-const (
-	socketAddress = "/run/docker/plugins/docker-volume-loopback.sock"
-)
-
 type config struct {
+	Socket      string `arg:"--socket,env:SOCKET,help:path to the plugin UNIX socket under /run/docker/plugins/"`
 	StateDir    string `arg:"--state-dir,env:STATE_DIR,help:dir used to keep track of currently mounted volumes"`
 	DataDir     string `arg:"--data-dir,env:DATA_DIR,help:dir used to store actual volume data"`
 	MountDir    string `arg:"--mount-dir,env:MOUNT_DIR,help:dir used to create mount-points"`
@@ -26,6 +24,7 @@ type config struct {
 var (
 	logger = zerolog.New(os.Stdout)
 	args   = &config{
+		Socket:      "/run/docker/plugins/docker-volume-loopback.sock",
 		StateDir:    "/run/docker-volume-loopback",
 		DataDir:     "/var/lib/docker-volume-loopback",
 		MountDir:    "/mnt",
@@ -37,16 +36,35 @@ var (
 func main() {
 	arg.MustParse(args)
 
-	logger.Info().
-		Str("socket-address", socketAddress).
-		Interface("args", args).
-		Msg("initializing plugin")
-
 	if args.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	d, err := driver.NewDriver(driver.Config{
+	logger.Info().
+		Str("socket-address", args.Socket).
+		Interface("args", args).
+		Msg("initializing plugin")
+
+	_, errXfs := exec.LookPath("mkfs.xfs")
+	if errXfs != nil {
+		logger.Warn().
+			Err(errXfs).
+			Msg("mkfs.xfs is not available, please install 'xfsprogs' to be able to use xfs filesystem")
+	}
+
+	_, errExt4 := exec.LookPath("mkfs.ext4")
+	if errExt4 != nil {
+		logger.Warn().
+			Err(errExt4).
+			Msg("mkfs.ext4 is not available, please install 'e2fsprogs' to be able to use ext4 filesystem")
+	}
+	if errXfs != nil && errExt4 != nil {
+		logger.Fatal().
+			Msg("Neither of supported filesystems (xfs, ext4) are available")
+		os.Exit(1)
+	}
+
+	driverInstance, err := driver.NewDriver(driver.Config{
 		StateDir:    args.StateDir,
 		DataDir:     args.DataDir,
 		MountDir:    args.MountDir,
@@ -55,16 +73,16 @@ func main() {
 	if err != nil {
 		logger.Fatal().
 			Err(err).
-			Msg("failed to initialize loopback volume driver")
+			Msg("failed to initialize 'docker-volume-loopback' driver")
 		os.Exit(1)
 	}
 
-	h := v.NewHandler(d)
-	err = h.ServeUnix(socketAddress, 0)
+	handler := v.NewHandler(driverInstance)
+	err = handler.ServeUnix(args.Socket, 0)
 	if err != nil {
 		logger.Fatal().
 			Err(err).
-			Str("socket-address", socketAddress).
+			Str("socket-address", args.Socket).
 			Msg("failed to server volume plugin api over unix socket")
 		os.Exit(1)
 	}
