@@ -4,7 +4,12 @@
 
 IMAGE="alpine"
 DRIVER="docker-volume-loopback"
-DATA_DIR="/var/lib/${DRIVER}"
+eval $(strings -a /proc/$(pidof docker-volume-loopback)/environ | grep DATA_DIR)
+DATA_DIR=${DATA_DIR:-"/var/lib/${DRIVER}"} # a default fall-back
+
+run() {
+    nsenter -t $(pidof "${DRIVER}") -a "${@}"
+}
 
 oneTimeSetUp() {
     docker volume rm $(docker volume create -d "${DRIVER}" -o size=100MiB) &> /dev/null
@@ -12,17 +17,17 @@ oneTimeSetUp() {
 
 setUp() {
     HANDLE=$(mktemp -u)
-    truncate -s "${BASE_SIZE:-2G}" "${HANDLE}"
+    run truncate -s "${BASE_SIZE:-2G}" "${HANDLE}"
 
 
     case "${BASE_FS:-xfs}" in
     xfs)
-        mkfs.xfs "${HANDLE}" &> /dev/null
-        mount -o nouuid "${HANDLE}" "${DATA_DIR}"
+        run mkfs.xfs -f "${HANDLE}" &> /dev/null
+        run mount -o nouuid "${HANDLE}" "${DATA_DIR}"
         ;;
     ext*)
-        mkfs.${BASE_FS} -F "${HANDLE}" &> /dev/null
-        mount "${HANDLE}" "${DATA_DIR}"
+        run mkfs.${BASE_FS} -F "${HANDLE}" &> /dev/null
+        run mount "${HANDLE}" "${DATA_DIR}"
         ;;
     *)
         echo "Unsupported BASE fs"
@@ -32,8 +37,8 @@ setUp() {
 }
 
 tearDown() {
-    umount -ld "${DATA_DIR}"
-    rm -f "${HANDLE}"
+    run umount -ld "${DATA_DIR}"
+    run rm -f "${HANDLE}"
 }
 
 . ./shunit2

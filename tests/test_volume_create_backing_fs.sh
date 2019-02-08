@@ -12,7 +12,7 @@ testFallbackToDdFromFallocateOnUnsupportedFs() {
     result=$?
 
     ## because we shadow real data dir with our test volume we're sure there shouldn't be any volumes
-    count=$(ls -1 "/var/lib/${DRIVER}/" | grep -v "lost+found" | wc -l)
+    count=$(run ls -1 "${DATA_DIR}/" | grep -v "lost+found" | wc -l)
 
     assertEquals "Volume creation should succeed" "0" "${result}"
     assertEquals "There should be 1 volume" "1" "${count}"
@@ -30,7 +30,7 @@ testDdFailureScenarioWhenThereIsNotEnoughDiskSpace() {
     result=$?
 
     ## because we shadow real data dir with our test volume we're sure there shouldn't be any volumes
-    count=$(ls -1 "/var/lib/${DRIVER}/" | grep -v "lost+found" | wc -l)
+    count=$(run ls -1 "${DATA_DIR}/" | grep -v "lost+found" | wc -l)
 
     assertEquals "Volume creation should fail" "1" "${result}"
     assertEquals "There should be no volumes" "0" "${count}"

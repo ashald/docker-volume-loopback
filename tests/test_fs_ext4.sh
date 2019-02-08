@@ -11,7 +11,7 @@ testRegularVolumeChecksDiskSpaceBeforeFormatting() {
     result=$?
 
     ## because we shadow real data dir with our test volume we're sure there shouldn't be any volumes
-    count=$(ls -1 "/var/lib/${DRIVER}/" | wc -l)
+    count=$(run ls -1 "${DATA_DIR}/" | wc -l)
 
     # checks
     assertEquals "1" "${result}"
@@ -23,9 +23,8 @@ testRegularVolumeDoesNotReserveDiskSpace() {
     # setup
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=false)
 
-    info=$(ls --block-size=M -ls "/var/lib/${DRIVER}/${volume}.${FS}")
-    allocated_size=$(echo ${info} | awk '{print $1}' | tr -dc '0-9')
-    apparent_size=$(echo ${info} | awk '{print $6}' | tr -dc '0-9')
+    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume}.${FS} | tr ' ' '*')))" # allocated space in bytes
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"                       # apparent  space in bytes
 
     # checks
     assertTrue "Regular ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"
@@ -42,12 +41,11 @@ testSparseVolumeDoesNotCheckAvailableDiskSpace() {
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=true -o size=10GiB)
     result=$?
 
-    info=$(ls --block-size=M -ls "/var/lib/${DRIVER}/${volume}.${FS}")
-    apparent_size=$(echo ${info} | awk '{print $6}' | tr -dc '0-9')
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"     # apparent  space in bytes
 
     # checks
     assertEquals "0" "${result}"
-    assertEquals "10240" "${apparent_size}"
+    assertEquals "$((10*1024*1024*1024))" "${apparent_size}"
 
     # cleanup
     docker volume rm "${volume}" > /dev/null
@@ -58,9 +56,8 @@ testSparseVolumeDoesNotReserveDiskSpace() {
     # setup
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=true)
 
-    info=$(ls --block-size=M -ls "/var/lib/${DRIVER}/${volume}.${FS}")
-    allocated_size=$(echo ${info} | awk '{print $1}' | tr -dc '0-9')
-    apparent_size=$(echo ${info} | awk '{print $6}' | tr -dc '0-9')
+    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume}.${FS} | tr ' ' '*')))" # allocated space in bytes
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"                       # apparent  space in bytes
 
     # checks
     assertTrue "Sparse ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"

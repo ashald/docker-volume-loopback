@@ -9,6 +9,6 @@ RUN make build && \
 
 # package
 FROM alpine
-RUN apk --no-cache add e2fsprogs xfsprogs
+RUN apk --no-cache add e2fsprogs xfsprogs util-linux && rm -rf /usr/share/terminfo && rm -rf /etc/terminfo
 COPY --from=builder /docker-volume-loopback /
 CMD [ "/docker-volume-loopback" ]

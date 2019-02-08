@@ -33,11 +33,11 @@
             "Description": "Path to the plugin UNIX socket",
             "Name": "SOCKET",
             "Settable": [],
-            "Value": "/run/docker/plugins/docker-volume-loop.sock"
+            "Value": "/run/docker/plugins/loop.sock"
         }
     ],
     "Interface": {
-        "Socket": "docker-volume-loop.sock",
+        "Socket": "loop.sock",
         "Types": ["docker.volumedriver/1.0"]
     },
     "Linux": {
@@ -61,7 +61,7 @@
         },
         {
             "Destination": "/srv",
-            "Options": ["bind"],
+            "Options": ["rbind"],
             "Source": "/",
             "Type": "bind"
         }

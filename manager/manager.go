@@ -18,7 +18,7 @@ var (
 
 	MkFsOptions = map[string][]string{
 		"ext4": {"-F"},
-		"xfs":  {},
+		"xfs":  {"-f"},
 	}
 
 	MountOptions = map[string][]string{
