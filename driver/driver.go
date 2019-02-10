@@ -2,7 +2,7 @@ package driver
 
 import (
 	"fmt"
-	"os"
+	"github.com/ashald/docker-volume-loopback/context"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/ashald/docker-volume-loopback/manager"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/ventu-io/go-shortid"
-
 	v "github.com/docker/go-plugins-helpers/volume"
+	"github.com/pkg/errors"
 )
 
 type Config struct {
@@ -26,20 +23,40 @@ type Config struct {
 
 type Driver struct {
 	defaultSize string
-	logger      zerolog.Logger
 	manager     *manager.Manager
 	sync.Mutex
 }
 
 var AllowedOptions = []string{"size", "sparse", "fs", "uid", "gid", "mode"}
 
-func NewDriver(cfg Config) (d Driver, err error) {
+func NewDriver(ctx *context.Context, cfg Config) (driver Driver, err error) {
+	ctx = ctx.Field("cfg", cfg)
+
+	ctx.
+		Level(context.Info).
+		Message("instantiating driver")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error while instantiating driver")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished instantiating driver")
+		}
+	}()
+
 	if cfg.DefaultSize == "" {
 		err = errors.Errorf("DefaultSize must be specified")
 		return
 	}
+	driver.defaultSize = cfg.DefaultSize
 
-	m, err := manager.New(manager.Config{
+	mgr, err := manager.New(ctx.Derived(), manager.Config{
 		StateDir: cfg.StateDir,
 		DataDir:  cfg.DataDir,
 		MountDir: cfg.MountDir,
@@ -51,23 +68,39 @@ func NewDriver(cfg Config) (d Driver, err error) {
 		return
 	}
 
-	d.logger = zerolog.New(os.Stdout).With().Str("from", "driver").Logger()
-	d.defaultSize = cfg.DefaultSize
-	d.logger.Info().Msg("driver initiated")
-	d.manager = &m
+	driver.manager = &mgr
 
 	return
 }
 
-func (d Driver) Create(req *v.CreateRequest) error {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "create").
-		Str("name", req.Name).
-		Str("opts-size", req.Options["size"]).
-		Logger()
+func (d Driver) Create(req *v.CreateRequest) (err error) {
+	// Context definition
+	ctx := context.New().Field(":func", "driver/Create")
 
-	// 1st - let's validate incoming option names
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Validation: incoming option names
+	ctx.
+		Level(context.Debug).
+		Message("validating options")
+
 	allowedOptionsSet := make(map[string]struct{})
 	for _, option := range AllowedOptions {
 		allowedOptionsSet[option] = struct{}{}
@@ -86,13 +119,13 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			strings.Join(wrongOptions, ", "), strings.Join(AllowedOptions, ", "))
 	}
 
-	// 2nd - parse 'size' option if present
+	// Validation: 'size' option if present
 	size, sizePresent := req.Options["size"]
-
 	if !sizePresent {
-		logger.Debug().
-			Str("default", d.defaultSize).
-			Msg("no size opt found, using default")
+		ctx.
+			Level(context.Debug).
+			Field("default", d.defaultSize).
+			Message("no 'size' option found - using default")
 		size = d.defaultSize
 	}
 
@@ -101,7 +134,7 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		return errors.Errorf("cannot convert 'size' option value '%s' into bytes", size)
 	}
 
-	// 3rd - parse 'sparse' option if present
+	// Validation: 'sparse' option if present
 	sparse := false
 	sparseStr, sparsePresent := req.Options["sparse"]
 	if sparsePresent {
@@ -111,19 +144,20 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		}
 	}
 
-	// 4th - parse 'fs' option if present
+	// Validation: 'fs' option if present
 	var fs string
 	fsInput, fsPresent := req.Options["fs"]
-	if fsPresent && len(fsInput) > 0 {
+	if fsPresent {
 		fs = strings.ToLower(strings.TrimSpace(fsInput))
 	} else {
 		fs = "xfs"
-		logger.Debug().
-			Str("default", fs).
-			Msg("no fs opt found, using default")
+		ctx.
+			Level(context.Debug).
+			Field("default", fs).
+			Message("no 'fs' option found - using default")
 	}
 
-	// 5th - parse 'uid' option if present
+	// Validation: 'uid' option if present
 	uid := -1
 	uidStr, uidPresent := req.Options["uid"]
 	if uidPresent && len(uidStr) > 0 {
@@ -135,12 +169,13 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			return errors.Errorf("'uid' option should be >= 0 but received '%d'", uid)
 		}
 
-		logger.Debug().
-			Int("uid", uid).
-			Msg("set volume root uid")
+		ctx.
+			Level(context.Debug).
+			Field("uid", uid).
+			Message("will set volume's root uid owner")
 	}
 
-	// 6th - parse 'gid' option if present
+	// Validation:  'gid' option if present
 	gid := -1
 	gidStr, gidPresent := req.Options["gid"]
 	if gidPresent && len(gidStr) > 0 {
@@ -152,18 +187,20 @@ func (d Driver) Create(req *v.CreateRequest) error {
 			return errors.Errorf("'gid' option should be >= 0 but received '%d'", gid)
 		}
 
-		logger.Debug().
-			Int("gid", gid).
-			Msg("set volume root gid")
+		ctx.
+			Level(context.Debug).
+			Field("gid", uid).
+			Message("will set volume's root gid owner")
 	}
 
-	// 7th - parse 'mode' option if present
+	// Validation: 'mode' option if present
 	var mode uint32
 	modeStr, modePresent := req.Options["mode"]
 	if modePresent && len(modeStr) > 0 {
-		logger.Debug().
-			Str("mode", modeStr).
-			Msg("will parse as octal")
+		ctx.
+			Level(context.Debug).
+			Field("mode", modeStr).
+			Message("will parse mode as octal")
 
 		modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
 		if err != nil {
@@ -177,72 +214,121 @@ func (d Driver) Create(req *v.CreateRequest) error {
 		mode = uint32(modeParsed)
 	}
 
-	// Finally - attempt creating a volume
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting creation")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	err = d.manager.Create(req.Name, sizeInBytes, sparse, fs, uid, gid, mode)
-	if err != nil {
-		logger.Debug().Msg("failed creating volume")
-		return err
-	}
+	// Processing
+	err = d.manager.Create(ctx.Derived(), req.Name, sizeInBytes, sparse, fs, uid, gid, mode)
 
-	logger.Debug().Msg("finished creating volume")
-	return nil
+	return
 }
 
-func (d Driver) List() (*v.ListResponse, error) {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "list").
-		Logger()
+func (d Driver) List() (response *v.ListResponse, err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/List")
+
+	ctx.
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting volume listing")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	vols, err := d.manager.List()
+	// Processing
+	volumes, err := d.manager.List(ctx.Derived())
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	resp := new(v.ListResponse)
-	resp.Volumes = make([]*v.Volume, len(vols))
-	for idx, vol := range vols {
-		resp.Volumes[idx] = &v.Volume{
+	// Response handling
+	response = new(v.ListResponse)
+	response.Volumes = make([]*v.Volume, len(volumes))
+	for idx, vol := range volumes {
+		response.Volumes[idx] = &v.Volume{
 			Name: vol.Name,
 		}
 	}
 
-	logger.Debug().
-		Int("number-of-volumes", len(vols)).
-		Msg("finished listing volumes")
-	return resp, nil
+	return
 }
 
-func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "get").
-		Str("name", req.Name).
-		Logger()
+func (d Driver) Get(req *v.GetRequest) (response *v.GetResponse, err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/Get")
+
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting volume retrieval")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	vol, err := d.manager.Get(req.Name)
+	// Processing
+	vol, err := d.manager.Get(ctx.Derived(), req.Name)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	resp := new(v.GetResponse)
-	resp.Volume = &v.Volume{
+	// Response handling
+	response = new(v.GetResponse)
+	response.Volume = &v.Volume{
 		Name:       req.Name,
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
 		Mountpoint: vol.MountPointPath,
@@ -253,102 +339,193 @@ func (d Driver) Get(req *v.GetRequest) (*v.GetResponse, error) {
 		},
 	}
 
-	logger.Debug().
-		Str("mountpoint", vol.MountPointPath).
-		Msg("finished retrieving volume")
-	return resp, nil
+	return
 }
 
-func (d Driver) Remove(req *v.RemoveRequest) error {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "remove").
-		Str("name", req.Name).
-		Logger()
+func (d Driver) Remove(req *v.RemoveRequest) (err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/Remove")
+
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting removal")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	err := d.manager.Delete(req.Name)
+	// Processing
+	err = d.manager.Delete(ctx.Derived(), req.Name)
 
-	logger.Debug().Msg("finished removing volume")
-
-	return err
+	return
 }
 
-func (d Driver) Path(req *v.PathRequest) (*v.PathResponse, error) {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "path").
-		Str("name", req.Name).
-		Logger()
+func (d Driver) Path(req *v.PathRequest) (response *v.PathResponse, err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/Path")
+
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting path retrieval")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	vol, err := d.manager.Get(req.Name)
+	// Processing
+	volume, err := d.manager.Get(ctx.Derived(), req.Name)
+
+	// Error & Response handling
 	if err != nil {
-		return nil, errors.Wrapf(err,
-			"manager failed to retrieve volume named '%s'",
-			req.Name)
+		return
 	}
 
-	logger.Debug().
-		Str("path", vol.MountPointPath).
-		Msg("finished retrieving volume path")
+	response = new(v.PathResponse)
+	response.Mountpoint = volume.MountPointPath
 
-	resp := new(v.PathResponse)
-	resp.Mountpoint = vol.MountPointPath
-	return resp, nil
+	return
 }
 
-func (d Driver) Mount(req *v.MountRequest) (*v.MountResponse, error) {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "mount").
-		Str("name", req.Name).
-		Str("id", req.ID).
-		Logger()
+func (d Driver) Mount(req *v.MountRequest) (response *v.MountResponse, err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/Mount")
+
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("starting mount")
+	// Processing
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	entrypoint, err := d.manager.Mount(req.Name, req.ID)
+	entrypoint, err := d.manager.Mount(ctx.Derived(), req.Name, req.ID)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	logger.Debug().Msg("finished mounting volume")
+	// Response handling
+	response = new(v.MountResponse)
+	response.Mountpoint = entrypoint
 
-	resp := new(v.MountResponse)
-	resp.Mountpoint = entrypoint
-	return resp, nil
+	return
 }
 
-func (d Driver) Unmount(req *v.UnmountRequest) error {
-	var logger = d.logger.With().
-		Str("log-id", shortid.MustGenerate()).
-		Str("method", "unmount").
-		Str("name", req.Name).
-		Str("id", req.ID).
-		Logger()
+func (d Driver) Unmount(req *v.UnmountRequest) (err error) {
+	// Context definition
+	ctx := context.New().
+		Field(":func", "driver/Unmount")
+
+	ctx.
+		Level(context.Debug).
+		Field(":param/req", req).
+		Message("invoked")
+
+	defer func() {
+		if err != nil {
+			ctx.
+				Level(context.Error).
+				Field("error", err).
+				Message("failed with an error")
+			return
+		} else {
+			ctx.
+				Level(context.Info).
+				Message("finished processing")
+		}
+	}()
+
+	// Handling locking
+	ctx.
+		Level(context.Debug).
+		Message("waiting for a lock")
 
 	d.Lock()
 	defer d.Unlock()
 
-	logger.Debug().Msg("started unmounting")
+	ctx.
+		Level(context.Info).
+		Message("starting processing")
 
-	err := d.manager.UnMount(req.Name, req.ID)
+	// Processing
+	err = d.manager.UnMount(ctx.Derived(), req.Name, req.ID)
+	if err != nil {
+		return
+	}
 
-	logger.Debug().Msg("finished unmounting")
-
-	return err
+	return
 }
 
 func (d Driver) Capabilities() *v.CapabilitiesResponse {

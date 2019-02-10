@@ -27,7 +27,7 @@ func (v Volume) IsMounted() (mounted bool, err error) {
 			return
 		}
 		err = errors.Wrapf(err,
-			"Error checking volume's mount status - cannot read volume state dir '%s'",
+			"error checking volume's mount status - cannot read volume state dir '%s'",
 			v.StateDir)
 		return
 	}
