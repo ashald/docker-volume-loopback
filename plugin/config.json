@@ -6,19 +6,19 @@
     ],
     "Env": [
         {
-            "Description": "dir used to keep track of currently mounted volumes",
+            "Description": "Dir used to keep track of currently mounted volumes",
             "Name": "STATE_DIR",
             "Settable": ["value"],
             "Value": "/run/docker-volume-loopback"
         },
         {
-            "Description": "dir used to store actual volume data",
+            "Description": "Dir used to store actual volume data",
             "Name": "DATA_DIR",
             "Settable": ["value"],
             "Value": "/srv/var/lib/docker-volume-loopback"
         },
         {
-            "Description": "dir used to create mount-points",
+            "Description": "Dir used to create mount-points",
             "Name": "MOUNT_DIR",
             "Settable": ["value"],
             "Value": "/mnt"
@@ -34,6 +34,18 @@
             "Name": "SOCKET",
             "Settable": [],
             "Value": "/run/docker/plugins/loop.sock"
+        },
+        {
+            "Description": "Log level - from 0 to 4 for Error/Warning/Info/Debug/Trace",
+            "Name": "LOG_LEVEL",
+            "Settable": [],
+            "Value": "2"
+        },
+        {
+            "Description": "Log format - json or text",
+            "Name": "LOG_FORMAT",
+            "Settable": [],
+            "Value": "json"
         }
     ],
     "Interface": {
