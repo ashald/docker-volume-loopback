@@ -106,6 +106,7 @@ func (d Driver) Create(request *v.CreateRequest) (err error) {
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -311,6 +312,7 @@ func (d Driver) List() (response *v.ListResponse, err error) {
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -378,6 +380,7 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -448,6 +451,7 @@ func (d Driver) Remove(request *v.RemoveRequest) (err error) {
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -497,6 +501,7 @@ func (d Driver) Path(request *v.PathRequest) (response *v.PathResponse, err erro
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -559,6 +564,7 @@ func (d Driver) Mount(request *v.MountRequest) (response *v.MountResponse, err e
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
@@ -621,6 +627,7 @@ func (d Driver) Unmount(request *v.UnmountRequest) (err error) {
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
+				err = errors.Wrapf(err, initial.Trace)
 				return
 			} else {
 				initial.
