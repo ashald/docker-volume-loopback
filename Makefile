@@ -1,17 +1,31 @@
-VERSION             :=  0
-AUTHOR              :=  ashald
-PLUGIN_NAME			:=	docker-volume-loopback
-PLUGIN_FULL_NAME	:=	${AUTHOR}/${PLUGIN_NAME}
-ROOTFS_CONTAINER	:=	${PLUGIN_NAME}-rootfs
-ROOTFS_IMAGE		:=	${AUTHOR}/${ROOTFS_CONTAINER}
+VERSION             ?= $(shell git describe 2>/dev/null || echo "v0.$(git rev-list --count HEAD)")
+AUTHOR              := ashald
+PLUGIN_NAME			:= docker-volume-loopback
+PLUGIN_FULL_NAME	:= ${AUTHOR}/${PLUGIN_NAME}
+ROOTFS_CONTAINER	:= ${PLUGIN_NAME}-rootfs
+ROOTFS_IMAGE		:= ${AUTHOR}/${ROOTFS_CONTAINER}
+
 
 all: format build
+
 
 format:
 	go fmt ./...
 
+
 build:
 	GOOS=linux GOARCH=amd64 go build -o "$(PLUGIN_NAME)"
+
+
+clean:
+    mkdir -p ./plugin/rootfs
+    rm -rf ./plugin/rootfs
+    rm -f ./$(ROOTFS_IMAGE)
+
+clean-plugin:
+    docker plugin rm --force $(PLUGIN_FULL_NAME):$(VERSION) || true
+    docker plugin rm --force $(PLUGIN_FULL_NAME) || true
+
 
 rootfs-image:
 	docker build -t $(ROOTFS_IMAGE) .
@@ -20,9 +34,9 @@ rootfs-image:
 rootfs: rootfs-image
 	docker rm -vf $(ROOTFS_CONTAINER) || true
 	docker create --name $(ROOTFS_CONTAINER) $(ROOTFS_IMAGE) || true
-	mkdir -p plugin/rootfs
-	rm -rf plugin/rootfs/*
-	docker export $(ROOTFS_CONTAINER) | tar -x -C plugin/rootfs
+	mkdir -p ./plugin/rootfs
+	rm -rf ./plugin/rootfs/*
+	docker export $(ROOTFS_CONTAINER) | tar -x -C ./plugin/rootfs
 	docker rm -vf $(ROOTFS_CONTAINER)
 
 
@@ -33,12 +47,19 @@ plugin: rootfs
 	docker plugin enable $(PLUGIN_NAME)
 
 
-plugin-push: rootfs
-	docker plugin rm --force $(PLUGIN_FULL_NAME) || true
-	docker plugin create $(PLUGIN_FULL_NAME) ./plugin
+plugin-push-version: rootfs
+	docker plugin rm --force $(PLUGIN_FULL_NAME):$(VERSION) || true
 	docker plugin create $(PLUGIN_FULL_NAME):$(VERSION) ./plugin
-	docker plugin push $(PLUGIN_FULL_NAME)
 	docker plugin push $(PLUGIN_FULL_NAME):$(VERSION)
 
 
-.PHONY: build rootfs-image rootfs plugin plugin-push
+plugin-push-default: rootfs
+	docker plugin rm --force $(PLUGIN_FULL_NAME) || true
+	docker plugin create $(PLUGIN_FULL_NAME) ./plugin
+	docker plugin push $(PLUGIN_FULL_NAME)
+
+
+plugin-push: plugin-push-version plugin-push-default
+
+
+.PHONY: clean clean-plugin build rootfs-image rootfs plugin plugin-push plugin-push-version plugin-push-default
