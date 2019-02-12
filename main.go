@@ -14,6 +14,7 @@ import (
 type config struct {
 	Socket      string `arg:"--socket,env:SOCKET,help:path to the plugin UNIX socket under /run/docker/plugins/"`
 	LogLevel    int    `arg:"--log-level,env:LOG_LEVEL,help:set log level - from 0 to 4 for Error/Warning/Info/Debug/Trace"`
+	LogFormat   string `arg:"--log-format,env:LOG_FORMAT,help:set log format - json/text/nice"`
 	StateDir    string `arg:"--state-dir,env:STATE_DIR,help:dir used to keep track of currently mounted volumes"`
 	DataDir     string `arg:"--data-dir,env:DATA_DIR,help:dir used to store actual volume data"`
 	MountDir    string `arg:"--mount-dir,env:MOUNT_DIR,help:dir used to create mount-points"`
@@ -28,13 +29,14 @@ var (
 		MountDir:    "/mnt",
 		DefaultSize: "1GiB",
 		LogLevel:    0,
+		LogFormat:   context.FormatNice,
 	}
 )
 
 func main() {
 	arg.MustParse(args)
 
-	context.Init(args.LogLevel, os.Stdout)
+	context.Init(args.LogLevel, args.LogFormat, os.Stdout)
 
 	ctx := context.New()
 

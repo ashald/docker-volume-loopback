@@ -6,9 +6,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
+	"strings"
 	"time"
 )
 
+// Log levels
 const (
 	Error   = 0
 	Warning = 1
@@ -25,6 +27,23 @@ var allLevels = []logrus.Level{
 	logrus.TraceLevel,
 }
 
+// Log formats
+const (
+	FormatJson = "json"
+	FormatText = "text"
+	FormatNice = "nice"
+)
+
+var formats = map[string]logrus.Formatter{
+	FormatJson: &logrus.JSONFormatter{},
+	FormatText: &logrus.TextFormatter{
+		DisableColors: true,
+		FullTimestamp: true,
+	},
+	FormatNice: &logrus.TextFormatter{},
+}
+var allFormats = []string{FormatJson, FormatText, FormatNice}
+
 type Fields map[string]interface{}
 
 type Context struct {
@@ -35,8 +54,15 @@ type Context struct {
 	fields map[string]interface{}
 }
 
-func Init(level int, output io.Writer) {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+func Init(level int, format string, output io.Writer) {
+	formatter, valid := formats[format]
+	if !valid {
+		panic(
+			fmt.Sprintf(
+				"Wrong log format '%s' - only following are supported: %s",
+				format, strings.Join(allFormats, ", ")))
+	}
+	logrus.SetFormatter(formatter)
 	logrus.SetOutput(output)
 	logrus.SetLevel(convertLevel(level))
 }
