@@ -65,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	driverInstance, err := driver.NewDriver(
+	driverInstance, err := driver.New(
 		ctx.Derived(),
 		driver.Config{
 			StateDir:    args.StateDir,

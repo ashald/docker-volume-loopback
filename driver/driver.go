@@ -29,8 +29,8 @@ type Driver struct {
 
 var AllowedOptions = []string{"size", "sparse", "fs", "uid", "gid", "mode"}
 
-func NewDriver(ctx *context.Context, cfg Config) (driver Driver, err error) {
-	ctx = ctx.Field(":func", "driver/NewDriver")
+func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
+	ctx = ctx.Field(":func", "driver/New")
 
 	ctx.
 		Level(context.Debug).
