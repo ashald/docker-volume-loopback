@@ -54,7 +54,7 @@ testWrongName() {
 
     # checks
     assertEquals "Volume creation should fail for invalid name" "1" "${result}"
-    assertContains "Error mentions invalid name and allowed pattern" "${error}" "volume name 'foo.bar' does not match allowed pattern '^[a-zA-Z0-9][\w\-]{1,250}$'"
+    assertContains "Error mentions invalid name and allowed pattern" "${error}" "invalid volume name - 'foo.bar' does not match allowed pattern '^[a-zA-Z0-9][\w\-]{1,250}$'"
 }
 
 . test.sh
