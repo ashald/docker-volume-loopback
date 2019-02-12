@@ -30,30 +30,34 @@ type Driver struct {
 var AllowedOptions = []string{"size", "sparse", "fs", "uid", "gid", "mode"}
 
 func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
-	ctx = ctx.Field(":func", "driver/New")
+	ctx = ctx.
+		Field(":func", "driver/New")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/cfg", cfg).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/cfg", cfg).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error while instantiating driver")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Message("instantiated driver")
-			ctx.
-				Level(context.Debug).
-				Field(":return/driver", driver).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error while instantiating driver")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Message("instantiated driver")
+				initial.
+					Level(context.Debug).
+					Field(":return/driver", driver).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	ctx.
 		Level(context.Trace).
@@ -86,26 +90,29 @@ func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
 
 func (d Driver) Create(request *v.CreateRequest) (err error) {
 	// Context definition
-	ctx := context.New().Field(":func", "driver/Create")
+	ctx := context.New().
+		Field(":func", "driver/Create")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/request", request).
 			Message("invoked")
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Info).
 					Field("volume", request.Name).
 					Message("created volume")
-				ctx.
+				initial.
 					Level(context.Debug).
 					Message("finished processing")
 			}
@@ -291,29 +298,32 @@ func (d Driver) List() (response *v.ListResponse, err error) {
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/List")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("count", len(response.Volumes)).
-				Message("listed volumes")
-			ctx.
-				Level(context.Debug).
-				Field(":return/response", response).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("count", len(response.Volumes)).
+					Message("listed volumes")
+				initial.
+					Level(context.Debug).
+					Field(":return/response", response).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.
@@ -354,30 +364,33 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/Get")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Message("inspected volume")
-			ctx.
-				Level(context.Debug).
-				Field(":return/response", response).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Message("inspected volume")
+				initial.
+					Level(context.Debug).
+					Field(":return/response", response).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.
@@ -421,29 +434,32 @@ func (d Driver) Remove(request *v.RemoveRequest) (err error) {
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/Remove")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Message("deleted volume")
-			ctx.
-				Level(context.Debug).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Message("deleted volume")
+				initial.
+					Level(context.Debug).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.
@@ -467,30 +483,33 @@ func (d Driver) Path(request *v.PathRequest) (response *v.PathResponse, err erro
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/Path")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Message("retrieved path for volume")
-			ctx.
-				Level(context.Debug).
-				Field(":return/response", response).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Message("retrieved path for volume")
+				initial.
+					Level(context.Debug).
+					Field(":return/response", response).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.
@@ -526,31 +545,34 @@ func (d Driver) Mount(request *v.MountRequest) (response *v.MountResponse, err e
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/Mount")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Field("lease", request.Name).
-				Message("mounted volume for lease")
-			ctx.
-				Level(context.Debug).
-				Field(":return/response", response).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Field("lease", request.Name).
+					Message("mounted volume for lease")
+				initial.
+					Level(context.Debug).
+					Field(":return/response", response).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.
@@ -585,30 +607,33 @@ func (d Driver) Unmount(request *v.UnmountRequest) (err error) {
 	// Context definition
 	ctx := context.New().
 		Field(":func", "driver/Unmount")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Field("lease", request.Name).
-				Message("unmounted volume for lease")
-			ctx.
-				Level(context.Debug).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Field("lease", request.Name).
+					Message("unmounted volume for lease")
+				initial.
+					Level(context.Debug).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Handling locking
 	ctx.

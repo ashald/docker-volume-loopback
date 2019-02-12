@@ -41,7 +41,7 @@ func main() {
 	ctx.
 		Level(context.Info).
 		Field("args", args).
-		Message("Initializing plugin")
+		Message("initializing plugin")
 
 	_, errXfs := exec.LookPath("mkfs.xfs")
 	if errXfs != nil {

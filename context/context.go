@@ -48,6 +48,20 @@ func New() (ctx *Context) {
 	return
 }
 
+func (ctx *Context) Copy() *Context {
+	newContext := new(Context)
+	newContext.Trace = ctx.Trace
+	newContext.index = ctx.index
+	newContext.level = ctx.level
+	newContext.fields = make(map[string]interface{})
+
+	for k, v := range ctx.fields {
+		newContext.fields[k] = v
+	}
+
+	return newContext
+}
+
 func (ctx *Context) Derived() (derived *Context) {
 	ctx.index += 1
 	derived = New()
@@ -56,8 +70,10 @@ func (ctx *Context) Derived() (derived *Context) {
 }
 
 func (ctx *Context) Level(level int) *Context {
-	ctx.level = convertLevel(level)
-	return ctx
+	newContext := ctx.Copy()
+	newContext.level = convertLevel(level)
+
+	return newContext
 }
 
 func (ctx *Context) Field(name string, value interface{}) *Context {

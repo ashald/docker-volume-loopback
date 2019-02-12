@@ -9,18 +9,18 @@ import (
 
 func validateName(ctx *context.Context, name string) (err error) {
 	ctx = ctx.
-		Field(":func", "manager/validateName").
-		Field(":param/name", name)
+		Field(":func", "manager/validateName")
 
 	ctx.
 		Level(context.Debug).
+		Field(":param/name", name).
 		Message("invoked")
 
 	defer func() {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field("error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -36,7 +36,7 @@ func validateName(ctx *context.Context, name string) (err error) {
 	}
 
 	if !NameRegex.MatchString(name) {
-		err = errors.Errorf("invalid volume name: '%s' does not match allowed pattern '%s'", name, NamePattern)
+		err = errors.Errorf("invalid volume name - '%s' does not match allowed pattern '%s'", name, NamePattern)
 		return
 	}
 
@@ -45,24 +45,25 @@ func validateName(ctx *context.Context, name string) (err error) {
 
 func runCommand(ctx *context.Context, name string, args ...string) (output string, err error) {
 	ctx = ctx.
-		Field(":func", "manager/runCommand").
-		Field(":param/name", name).
-		Field(":param/args", args)
+		Field(":func", "manager/runCommand")
 
 	ctx.
 		Level(context.Debug).
+		Field(":param/name", name).
+		Field(":param/args", args).
 		Message("invoked")
 
 	defer func() {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field("error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
 			ctx.
 				Level(context.Debug).
+				Field(":return/output", output).
 				Message("finished")
 		}
 	}()

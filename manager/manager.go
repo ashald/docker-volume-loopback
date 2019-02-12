@@ -41,29 +41,32 @@ type Config struct {
 
 func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
 	ctx = ctx.Field(":func", "manager/New")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/cfg", cfg).
-		Message("invoked")
+		initial.
+			Level(context.Debug).
+			Field(":param/cfg", cfg).
+			Message("invoked")
 
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error while instantiating volume manager")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Message("instantiated volume manager")
-			ctx.
-				Level(context.Debug).
-				Field(":return/manager", manager).
-				Message("finished processing")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error while instantiating volume manager")
+				return
+			} else {
+				initial.
+					Level(context.Info).
+					Message("instantiated volume manager")
+				initial.
+					Level(context.Debug).
+					Field(":return/manager", manager).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// state dir
 	ctx.
@@ -118,21 +121,24 @@ func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
 
 func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/List")
+	ctx = ctx.
+		Field(":func", "manager/List")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Message("invoked")
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/error", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Field(":return/volumes", volumes).
 					Message("finished")
@@ -205,22 +211,25 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 
 func (m Manager) Get(ctx *context.Context, name string) (volume Volume, err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/Get")
+	ctx = ctx.
+		Field(":func", "manager/Get")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/name", name).
 			Message("invoked")
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Field(":return/volume", volume).
 					Message("finished")
@@ -252,9 +261,12 @@ func (m Manager) Get(ctx *context.Context, name string) (volume Volume, err erro
 
 func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sparse bool, fs string, uid, gid int, mode uint32) (err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/Create")
+	ctx = ctx.
+		Field(":func", "manager/Create")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/name", name).
 			Field(":param/sizeInBytes", sizeInBytes).
@@ -262,18 +274,18 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 			Field(":param/fs", fs).
 			Field(":param/uid", uid).
 			Field(":param/gid", gid).
-			Field(":param/mode", mode).
+			Field(":param/mode", fmt.Sprintf("%#o", mode)).
 			Message("invoked")
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Message("finished")
 			}
@@ -493,9 +505,12 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 
 func (m Manager) Mount(ctx *context.Context, name string, lease string) (result string, err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/Mount")
+	ctx = ctx.
+		Field(":func", "manager/Mount")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/name", name).
 			Field(":param/lease", lease).
@@ -503,13 +518,13 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Field(":return/result", result).
 					Message("finished")
@@ -683,9 +698,12 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 
 func (m Manager) UnMount(ctx *context.Context, name string, lease string) (err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/UnMount")
+	ctx = ctx.
+		Field(":func", "manager/UnMount")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/name", name).
 			Field(":param/lease", lease).
@@ -693,13 +711,13 @@ func (m Manager) UnMount(ctx *context.Context, name string, lease string) (err e
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Message("finished")
 			}
@@ -799,22 +817,25 @@ func (m Manager) UnMount(ctx *context.Context, name string, lease string) (err e
 
 func (m Manager) Delete(ctx *context.Context, name string) (err error) {
 	// tracing
-	ctx = ctx.Field(":func", "manager/Delete")
+	ctx = ctx.
+		Field(":func", "manager/Delete")
 	{
-		ctx.
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+
+		initial.
 			Level(context.Debug).
 			Field(":param/name", name).
 			Message("invoked")
 
 		defer func() {
 			if err != nil {
-				ctx.
+				initial.
 					Level(context.Error).
 					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
-				ctx.
+				initial.
 					Level(context.Debug).
 					Message("finished")
 			}
@@ -885,26 +906,28 @@ func (m Manager) Delete(ctx *context.Context, name string) (err error) {
 func (m Manager) getVolume(ctx *context.Context, name string) (volume Volume, err error) {
 	ctx = ctx.
 		Field(":func", "manager/getVolume")
+	{
+		initial := ctx.Copy() // we need a copy to avoid late binding and "junk" in fields in defer
+		initial.
+			Level(context.Debug).
+			Field(":param/name", name).
+			Message("invoked")
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/name", name).
-		Message("invoked")
-
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":return/err", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Debug).
-				Field(":return/volume", volume).
-				Message("finished")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				initial.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				initial.
+					Level(context.Debug).
+					Field(":return/volume", volume).
+					Message("finished")
+			}
+		}()
+	}
 
 	prefix := filepath.Join(m.dataDir, name) + ".*"
 	matches, err := filepath.Glob(prefix)
