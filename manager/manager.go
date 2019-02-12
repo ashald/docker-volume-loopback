@@ -119,7 +119,7 @@ func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
 	return
 }
 
-func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
+func (m Manager) List(ctx *context.Context) (volumes []string, err error) {
 	// tracing
 	ctx = ctx.
 		Field(":func", "manager/List")
@@ -149,11 +149,9 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 	// read data dir
 	var files []os.FileInfo
 	{
-		ctx := ctx.
-			Field("data-dir", m.dataDir)
-
 		ctx.
 			Level(context.Trace).
+			Field("data-dir", m.dataDir).
 			Message("checking if data-dir exists")
 
 		_, err = os.Stat(m.dataDir)
@@ -187,15 +185,8 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 			Message("processing entry")
 
 		if file.Mode().IsRegular() {
-			var vol Volume
+			volumes = append(volumes, file.Name())
 
-			name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-			vol, err = m.getVolume(ctx.Derived(), name)
-			if err != nil {
-				return
-			}
-
-			volumes = append(volumes, vol)
 			ctx.
 				Level(context.Trace).
 				Message("including as a volume")
@@ -344,7 +335,7 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 	}
 
 	// create data file
-	var dataFilePath = filepath.Join(m.dataDir, name+"."+fs)
+	var dataFilePath = filepath.Join(m.dataDir, name)
 	{
 		ctx := ctx.
 			Field("data-file", dataFilePath).
@@ -562,7 +553,7 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 		ctx.
 			Level(context.Trace).
 			Message("checking if volume is mounted anywhere else")
-		isAlreadyMounted, err = volume.IsMounted() // checking mount status early before we record a lease
+		isAlreadyMounted, err = volume.IsMounted(ctx.Derived()) // checking mount status early before we record a lease
 		if err != nil {
 			err = errors.Wrap(err, "cannot check volume mount status")
 			return
@@ -667,8 +658,18 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 				return
 			}
 
-			// we should've validated FS by now if it's not found then we will get empty list of options
-			mountFlags := MountOptions[volume.Fs]
+			ctx.
+				Level(context.Trace).
+				Message("resolving volume fs to determine mount options")
+			var fs string
+			fs, err = volume.Fs(ctx.Derived())
+			if err != nil {
+				err = errors.Wrapf(err, "cannot resolve volume fs to determine mount options")
+				return
+			}
+
+			mountFlags := MountOptions[fs]
+
 			ctx.
 				Level(context.Trace).
 				Field("mount-flags", mountFlags).
@@ -678,6 +679,7 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 				"mount",
 				append(mountFlags, volume.DataFilePath, volume.MountPointPath)...,
 			)
+
 			if err != nil {
 				ctx.
 					Level(context.Trace).
@@ -768,7 +770,7 @@ func (m Manager) UnMount(ctx *context.Context, name string, lease string) (err e
 		ctx.
 			Level(context.Trace).
 			Message("checking if volume is mounted anywhere else")
-		isMountedAnywhereElse, err = volume.IsMounted()
+		isMountedAnywhereElse, err = volume.IsMounted(ctx.Derived())
 		if err != nil {
 			err = errors.Wrapf(err, "cannot figure out if volume is used anywhere else", lease)
 			return
@@ -873,7 +875,7 @@ func (m Manager) Delete(ctx *context.Context, name string) (err error) {
 			Message("checking if volume is still mounted")
 
 		var isMounted bool
-		isMounted, err = volume.IsMounted()
+		isMounted, err = volume.IsMounted(ctx.Derived())
 
 		if err != nil {
 			err = errors.Wrap(err, "cannot get volume mount status")
@@ -929,36 +931,19 @@ func (m Manager) getVolume(ctx *context.Context, name string) (volume Volume, er
 		}()
 	}
 
-	prefix := filepath.Join(m.dataDir, name) + ".*"
-	matches, err := filepath.Glob(prefix)
-	if err != nil {
-		err = errors.Wrapf(err,
-			"an issue occurred while retrieving details about volume '%s' - cannot glob data dir", name)
-		return
-	}
-	if len(matches) > 1 {
-		err = errors.Errorf("more than 1 data file found for volume '%s'", name)
-		return
-	} else if len(matches) == 0 {
-		err = errors.Errorf("volume '%s' does not exist", name)
-		return
-	}
-
-	volumeDataFilePath := matches[0]
-	fs := strings.TrimLeft(filepath.Ext(volumeDataFilePath), ".")
-
+	volumeDataFilePath := filepath.Join(m.dataDir, name)
 	volumeDataFileInfo, err := os.Stat(volumeDataFilePath)
 
 	if err != nil {
-		if os.IsNotExist(err) { // this should not happen but...
-			err = errors.Errorf("volume '%s' disappeared just a moment ago", name)
+		if os.IsNotExist(err) {
+			err = errors.Errorf("volume '%s' does not exist", name)
 		}
 		return
 	}
 
 	if !volumeDataFileInfo.Mode().IsRegular() {
 		err = errors.Errorf(
-			"volume data path expected to point to a file but it appears to be something else: '%s'",
+			"volume data path expected to point toa file but it appears to be something else: '%s'",
 			volumeDataFilePath)
 		return
 	}
@@ -974,7 +959,6 @@ func (m Manager) getVolume(ctx *context.Context, name string) (volume Volume, er
 
 	volume = Volume{
 		Name:                 name,
-		Fs:                   fs,
 		AllocatedSizeInBytes: uint64(details.Blocks * 512),
 		MaxSizeInBytes:       uint64(details.Size),
 		StateDir:             filepath.Join(m.stateDir, name),

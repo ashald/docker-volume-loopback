@@ -23,8 +23,8 @@ testRegularVolumeDoesNotReserveDiskSpace() {
     # setup
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=false)
 
-    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume}.${FS} | tr ' ' '*')))" # allocated space in bytes
-    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"                       # apparent  space in bytes
+    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume} | tr ' ' '*')))" # allocated space in bytes
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume})"                       # apparent  space in bytes
 
     # checks
     assertTrue "Regular ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"
@@ -41,7 +41,7 @@ testSparseVolumeDoesNotCheckAvailableDiskSpace() {
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=true -o size=10GiB)
     result=$?
 
-    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"     # apparent  space in bytes
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume})"     # apparent  space in bytes
 
     # checks
     assertEquals "0" "${result}"
@@ -56,8 +56,8 @@ testSparseVolumeDoesNotReserveDiskSpace() {
     # setup
     volume=$(docker volume create -d "${DRIVER}" -o fs=${FS} -o sparse=true)
 
-    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume}.${FS} | tr ' ' '*')))" # allocated space in bytes
-    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume}.${FS})"                       # apparent  space in bytes
+    allocated_size="$(($(run stat -c '%b %B' ${DATA_DIR}/${volume} | tr ' ' '*')))" # allocated space in bytes
+    apparent_size="$(run stat -c '%s' ${DATA_DIR}/${volume})"                       # apparent  space in bytes
 
     # checks
     assertTrue "Sparse ${FS} volume of ${apparent_size} MiB should take less space: ${allocated_size} MiB" "[ ${allocated_size} -lt ${apparent_size} ]"

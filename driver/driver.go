@@ -355,7 +355,7 @@ func (d Driver) List() (response *v.ListResponse, err error) {
 	response.Volumes = make([]*v.Volume, len(volumes))
 	for idx, vol := range volumes {
 		response.Volumes[idx] = &v.Volume{
-			Name: vol.Name,
+			Name: vol,
 		}
 	}
 
@@ -412,6 +412,7 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 	if err != nil {
 		return
 	}
+	fs, err := vol.Fs(ctx.Derived())
 
 	ctx.
 		Level(context.Trace).
@@ -424,7 +425,7 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 		CreatedAt:  fmt.Sprintf(vol.CreatedAt.Format(time.RFC3339)),
 		Mountpoint: vol.MountPointPath,
 		Status: map[string]interface{}{
-			"fs":             vol.Fs,
+			"fs":             fs,
 			"size-max":       strconv.FormatUint(vol.MaxSizeInBytes, 10),
 			"size-allocated": strconv.FormatUint(vol.AllocatedSizeInBytes, 10),
 		},
