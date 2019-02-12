@@ -41,7 +41,7 @@ func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error while instantiating driver")
 			return
 		} else {
@@ -50,7 +50,7 @@ func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
 				Message("instantiated driver")
 			ctx.
 				Level(context.Debug).
-				Field(":driver", driver).
+				Field(":return/driver", driver).
 				Message("finished processing")
 		}
 	}()
@@ -87,167 +87,186 @@ func New(ctx *context.Context, cfg Config) (driver Driver, err error) {
 func (d Driver) Create(request *v.CreateRequest) (err error) {
 	// Context definition
 	ctx := context.New().Field(":func", "driver/Create")
+	{
+		ctx.
+			Level(context.Debug).
+			Field(":param/request", request).
+			Message("invoked")
 
-	ctx.
-		Level(context.Debug).
-		Field(":param/request", request).
-		Message("invoked")
-
-	defer func() {
-		if err != nil {
-			ctx.
-				Level(context.Error).
-				Field(":error", err).
-				Message("failed with an error")
-			return
-		} else {
-			ctx.
-				Level(context.Info).
-				Field("volume", request.Name).
-				Message("created volume")
-		}
-	}()
+		defer func() {
+			if err != nil {
+				ctx.
+					Level(context.Error).
+					Field(":return/err", err).
+					Message("failed with an error")
+				return
+			} else {
+				ctx.
+					Level(context.Info).
+					Field("volume", request.Name).
+					Message("created volume")
+				ctx.
+					Level(context.Debug).
+					Message("finished processing")
+			}
+		}()
+	}
 
 	// Validation: incoming option names
-	ctx.
-		Level(context.Trace).
-		Message("validating options")
+	{
+		ctx.
+			Level(context.Trace).
+			Message("validating options")
 
-	allowedOptionsSet := make(map[string]struct{})
-	for _, option := range AllowedOptions {
-		allowedOptionsSet[option] = struct{}{}
-	}
-	var wrongOptions []string
-	for k := range request.Options {
-		_, allowed := allowedOptionsSet[k]
-		if !allowed {
-			wrongOptions = append(wrongOptions, k)
+		allowedOptionsSet := make(map[string]struct{})
+		for _, option := range AllowedOptions {
+			allowedOptionsSet[option] = struct{}{}
 		}
-	}
-	if len(wrongOptions) > 0 {
-		sort.Strings(wrongOptions)
-		return errors.Errorf(
-			"options '%s' are not among supported ones: %s",
-			strings.Join(wrongOptions, ", "), strings.Join(AllowedOptions, ", "))
+		var wrongOptions []string
+		for k := range request.Options {
+			_, allowed := allowedOptionsSet[k]
+			if !allowed {
+				wrongOptions = append(wrongOptions, k)
+			}
+		}
+		if len(wrongOptions) > 0 {
+			sort.Strings(wrongOptions)
+			return errors.Errorf(
+				"options '%s' are not among supported ones: %s",
+				strings.Join(wrongOptions, ", "), strings.Join(AllowedOptions, ", "))
+		}
 	}
 
 	// Validation: 'size' option if present
-	size, sizePresent := request.Options["size"]
-	ctx.
-		Level(context.Trace).
-		Field("size", size).
-		Message("validating 'size' option")
-	if !sizePresent {
+	var sizeInBytes int64
+	{
+		size, sizePresent := request.Options["size"]
 		ctx.
-			Level(context.Debug).
-			Field("default", d.defaultSize).
-			Message("no 'size' option found - using default")
-		size = d.defaultSize
-	}
+			Level(context.Trace).
+			Field("size", size).
+			Message("validating 'size' option")
+		if !sizePresent {
+			ctx.
+				Level(context.Debug).
+				Field("default", d.defaultSize).
+				Message("no 'size' option found - using default")
+			size = d.defaultSize
+		}
 
-	sizeInBytes, err := FromHumanSize(size)
-	if err != nil {
-		return errors.Errorf("cannot convert 'size' option value '%s' into bytes", size)
+		sizeInBytes, err = FromHumanSize(size)
+		if err != nil {
+			return errors.Errorf("cannot convert 'size' option value '%s' into bytes", size)
+		}
 	}
 
 	// Validation: 'sparse' option if present
 	sparse := false
-	sparseStr, sparsePresent := request.Options["sparse"]
-	ctx.
-		Level(context.Trace).
-		Field("sparse", sparseStr).
-		Message("validating 'sparse' option")
-	if sparsePresent {
-		sparse, err = strconv.ParseBool(sparseStr)
-		if err != nil {
-			return errors.Wrapf(err, "cannot parse 'sparse' option value '%s' as bool", sparseStr)
+	{
+		sparseStr, sparsePresent := request.Options["sparse"]
+		ctx.
+			Level(context.Trace).
+			Field("sparse", sparseStr).
+			Message("validating 'sparse' option")
+		if sparsePresent {
+			sparse, err = strconv.ParseBool(sparseStr)
+			if err != nil {
+				return errors.Wrapf(err, "cannot parse 'sparse' option value '%s' as bool", sparseStr)
+			}
 		}
 	}
 
 	// Validation: 'fs' option if present
 	var fs string
-	fsInput, fsPresent := request.Options["fs"]
-	ctx.
-		Level(context.Trace).
-		Field("fs", fsInput).
-		Message("validating 'fs' option")
-	if fsPresent {
-		fs = strings.ToLower(strings.TrimSpace(fsInput))
-	} else {
-		fs = "xfs"
+	{
+		fsInput, fsPresent := request.Options["fs"]
 		ctx.
-			Level(context.Debug).
-			Field("default", fs).
-			Message("no 'fs' option found - using default")
+			Level(context.Trace).
+			Field("fs", fsInput).
+			Message("validating 'fs' option")
+		if fsPresent {
+			fs = strings.ToLower(strings.TrimSpace(fsInput))
+		} else {
+			fs = "xfs"
+			ctx.
+				Level(context.Debug).
+				Field("default", fs).
+				Message("no 'fs' option found - using default")
+		}
 	}
 
 	// Validation: 'uid' option if present
 	uid := -1
-	uidStr, uidPresent := request.Options["uid"]
-	ctx.
-		Level(context.Trace).
-		Field("uid", uidStr).
-		Message("validating 'uid' option")
-	if uidPresent && len(uidStr) > 0 {
-		uid, err = strconv.Atoi(uidStr)
-		if err != nil {
-			return errors.Wrapf(err, "cannot parse 'uid' option value '%s' as an integer", uidStr)
-		}
-		if uid < 0 {
-			return errors.Errorf("'uid' option should be >= 0 but received '%d'", uid)
-		}
-
+	{
+		uidStr, uidPresent := request.Options["uid"]
 		ctx.
-			Level(context.Debug).
-			Field("uid", uid).
-			Message("will set volume's root uid owner")
+			Level(context.Trace).
+			Field("uid", uidStr).
+			Message("validating 'uid' option")
+		if uidPresent && len(uidStr) > 0 {
+			uid, err = strconv.Atoi(uidStr)
+			if err != nil {
+				return errors.Wrapf(err, "cannot parse 'uid' option value '%s' as an integer", uidStr)
+			}
+			if uid < 0 {
+				return errors.Errorf("'uid' option should be >= 0 but received '%d'", uid)
+			}
+
+			ctx.
+				Level(context.Debug).
+				Field("uid", uid).
+				Message("will set volume's root uid owner")
+		}
 	}
 
 	// Validation:  'gid' option if present
 	gid := -1
-	gidStr, gidPresent := request.Options["gid"]
-	ctx.
-		Level(context.Trace).
-		Field("gid", uidStr).
-		Message("validating 'gid' option")
-	if gidPresent && len(gidStr) > 0 {
-		gid, err = strconv.Atoi(gidStr)
-		if err != nil {
-			return errors.Wrapf(err, "cannot parse 'gid' option value '%s' as an integer", gidStr)
-		}
-		if gid < 0 {
-			return errors.Errorf("'gid' option should be >= 0 but received '%d'", gid)
-		}
-
+	{
+		gidStr, gidPresent := request.Options["gid"]
 		ctx.
-			Level(context.Debug).
-			Field("gid", uid).
-			Message("will set volume's root gid owner")
+			Level(context.Trace).
+			Field("gid", gidStr).
+			Message("validating 'gid' option")
+		if gidPresent && len(gidStr) > 0 {
+			gid, err = strconv.Atoi(gidStr)
+			if err != nil {
+				return errors.Wrapf(err, "cannot parse 'gid' option value '%s' as an integer", gidStr)
+			}
+			if gid < 0 {
+				return errors.Errorf("'gid' option should be >= 0 but received '%d'", gid)
+			}
+
+			ctx.
+				Level(context.Debug).
+				Field("gid", uid).
+				Message("will set volume's root gid owner")
+		}
 	}
 
 	// Validation: 'mode' option if present
 	var mode uint32
-	modeStr, modePresent := request.Options["mode"]
-	ctx.
-		Level(context.Trace).
-		Field("mod", modeStr).
-		Message("validating 'mode' option")
-	if modePresent && len(modeStr) > 0 {
+	{
+		modeStr, modePresent := request.Options["mode"]
 		ctx.
-			Level(context.Debug).
-			Field("mode", modeStr).
-			Message("will parse mode as octal")
+			Level(context.Trace).
+			Field("mod", modeStr).
+			Message("validating 'mode' option")
+		if modePresent && len(modeStr) > 0 {
+			ctx.
+				Level(context.Debug).
+				Field("mode", modeStr).
+				Message("will parse mode as octal")
 
-		modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
-		if err != nil {
-			return errors.Wrapf(err, "cannot parse mode '%s' as positive 4-position octal", modeStr)
+			modeParsed, err := strconv.ParseUint(modeStr, 8, 32)
+			if err != nil {
+				return errors.Wrapf(err, "cannot parse mode '%s' as positive 4-position octal", modeStr)
+			}
+
+			if modeParsed <= 0 || modeParsed > 07777 {
+				return errors.Errorf("mode value '%s' does not fall between 0 and 7777 in octal encoding", modeStr)
+			}
+
+			mode = uint32(modeParsed)
 		}
-
-		if modeParsed <= 0 || modeParsed > 07777 {
-			return errors.Errorf("mode value '%s' does not fall between 0 and 7777 in octal encoding", modeStr)
-		}
-
-		mode = uint32(modeParsed)
 	}
 
 	// Locking
@@ -281,7 +300,7 @@ func (d Driver) List() (response *v.ListResponse, err error) {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -291,7 +310,7 @@ func (d Driver) List() (response *v.ListResponse, err error) {
 				Message("listed volumes")
 			ctx.
 				Level(context.Debug).
-				Field(":response", response).
+				Field(":return/response", response).
 				Message("finished processing")
 		}
 	}()
@@ -345,7 +364,7 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -355,7 +374,7 @@ func (d Driver) Get(request *v.GetRequest) (response *v.GetResponse, err error) 
 				Message("inspected volume")
 			ctx.
 				Level(context.Debug).
-				Field(":response", response).
+				Field(":return/response", response).
 				Message("finished processing")
 		}
 	}()
@@ -412,7 +431,7 @@ func (d Driver) Remove(request *v.RemoveRequest) (err error) {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -458,7 +477,7 @@ func (d Driver) Path(request *v.PathRequest) (response *v.PathResponse, err erro
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -468,7 +487,7 @@ func (d Driver) Path(request *v.PathRequest) (response *v.PathResponse, err erro
 				Message("retrieved path for volume")
 			ctx.
 				Level(context.Debug).
-				Field(":response", response).
+				Field(":return/response", response).
 				Message("finished processing")
 		}
 	}()
@@ -517,7 +536,7 @@ func (d Driver) Mount(request *v.MountRequest) (response *v.MountResponse, err e
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
@@ -528,7 +547,7 @@ func (d Driver) Mount(request *v.MountRequest) (response *v.MountResponse, err e
 				Message("mounted volume for lease")
 			ctx.
 				Level(context.Debug).
-				Field(":response", response).
+				Field(":return/response", response).
 				Message("finished processing")
 		}
 	}()
@@ -576,7 +595,7 @@ func (d Driver) Unmount(request *v.UnmountRequest) (err error) {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field(":error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
