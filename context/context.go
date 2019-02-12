@@ -67,7 +67,9 @@ func (ctx *Context) Field(name string, value interface{}) *Context {
 
 func (ctx *Context) Message(message string) {
 	ctx.fields["::trace"] = ctx.Trace
-
+	if ctx.level == logrus.PanicLevel {
+		panic(fmt.Sprintf("Failed to log because level is not provided: %s", message))
+	}
 	logrus.WithFields(ctx.fields).Log(ctx.level, message)
 }
 
