@@ -40,27 +40,36 @@ type Config struct {
 }
 
 func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
-	ctx = ctx.Field("cfg", cfg)
+	ctx = ctx.Field(":func", "manager/New")
 
 	ctx.
-		Level(context.Info).
-		Message("instantiating volume manager")
+		Level(context.Debug).
+		Field(":param/cfg", cfg).
+		Message("invoked")
 
 	defer func() {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field("error", err).
+				Field(":return/err", err).
 				Message("failed with an error while instantiating volume manager")
 			return
 		} else {
 			ctx.
 				Level(context.Info).
-				Message("finished instantiating volume manager")
+				Message("instantiated volume manager")
+			ctx.
+				Level(context.Debug).
+				Field(":return/manager", manager).
+				Message("finished processing")
 		}
 	}()
 
 	// state dir
+	ctx.
+		Level(context.Trace).
+		Field("StateDir", cfg.StateDir).
+		Message("validating 'StateDir' config field")
 	if cfg.StateDir == "" {
 		err = errors.Errorf("StateDir is not specified.")
 		return
@@ -73,6 +82,10 @@ func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
 	manager.stateDir = cfg.StateDir
 
 	// data dir
+	ctx.
+		Level(context.Trace).
+		Field("DataDir", cfg.DataDir).
+		Message("validating 'DataDir' config field")
 	if cfg.DataDir == "" {
 		err = errors.Errorf("DataDir is not specified.")
 		return
@@ -85,6 +98,10 @@ func New(ctx *context.Context, cfg Config) (manager Manager, err error) {
 	manager.dataDir = cfg.DataDir
 
 	// mount dir
+	ctx.
+		Level(context.Trace).
+		Field("MountDir", cfg.MountDir).
+		Message("validating 'MountDir' config field")
 	if cfg.MountDir == "" {
 		err = errors.Errorf("MountDir is not specified.")
 		return
@@ -111,12 +128,13 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/error", err).
 					Message("failed with an error")
 				return
 			} else {
 				ctx.
 					Level(context.Debug).
+					Field(":return/volumes", volumes).
 					Message("finished")
 			}
 		}()
@@ -159,7 +177,7 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 			Field("entry", file.Name())
 
 		ctx.
-			Level(context.Debug).
+			Level(context.Trace).
 			Message("processing entry")
 
 		if file.Mode().IsRegular() {
@@ -182,11 +200,6 @@ func (m Manager) List(ctx *context.Context) (volumes []Volume, err error) {
 		}
 	}
 
-	ctx.
-		Level(context.Debug).
-		Field("count", len(volumes)).
-		Message("volumes found")
-
 	return
 }
 
@@ -203,12 +216,13 @@ func (m Manager) Get(ctx *context.Context, name string) (volume Volume, err erro
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
 				ctx.
 					Level(context.Debug).
+					Field(":return/volume", volume).
 					Message("finished")
 			}
 		}()
@@ -255,7 +269,7 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
@@ -308,7 +322,7 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 		ctx.
 			Level(context.Trace).
 			Field("datta-dir", m.dataDir).
-			Field("mode", dataDirMode).
+			Field("mode", fmt.Sprintf("%#o", dataDirMode)).
 			Message("ensuring data-dir exists and creating it with proper mode if not")
 		err = os.MkdirAll(m.dataDir, dataDirMode)
 		if err != nil {
@@ -446,7 +460,7 @@ func (m Manager) Create(ctx *context.Context, name string, sizeInBytes int64, sp
 		if mode > 0 {
 			ctx.
 				Level(context.Trace).
-				Field("mode", mode).
+				Field("mode", fmt.Sprintf("%#o", mode)).
 				Message("adjusting volume's root mode with 'chmod' exec")
 
 			var errStr string
@@ -491,12 +505,13 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
 				ctx.
 					Level(context.Debug).
+					Field(":return/result", result).
 					Message("finished")
 			}
 		}()
@@ -628,7 +643,7 @@ func (m Manager) Mount(ctx *context.Context, name string, lease string) (result 
 			var mountPointMode os.FileMode = 0777
 			ctx.
 				Level(context.Trace).
-				Field("mode", mountPointMode).
+				Field("mode", fmt.Sprintf("%#o", mountPointMode)).
 				Message("creating mount-point")
 
 			err = os.Mkdir(volume.MountPointPath, mountPointMode)
@@ -680,7 +695,7 @@ func (m Manager) UnMount(ctx *context.Context, name string, lease string) (err e
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
@@ -795,7 +810,7 @@ func (m Manager) Delete(ctx *context.Context, name string) (err error) {
 			if err != nil {
 				ctx.
 					Level(context.Error).
-					Field("error", err).
+					Field(":return/err", err).
 					Message("failed with an error")
 				return
 			} else {
@@ -867,25 +882,26 @@ func (m Manager) Delete(ctx *context.Context, name string) (err error) {
 	return
 }
 
-func (m Manager) getVolume(ctx *context.Context, name string) (vol Volume, err error) {
+func (m Manager) getVolume(ctx *context.Context, name string) (volume Volume, err error) {
 	ctx = ctx.
-		Field(":func", "manager/getVolume").
-		Field(":param/name", name)
+		Field(":func", "manager/getVolume")
 
 	ctx.
 		Level(context.Debug).
+		Field(":param/name", name).
 		Message("invoked")
 
 	defer func() {
 		if err != nil {
 			ctx.
 				Level(context.Error).
-				Field("error", err).
+				Field(":return/err", err).
 				Message("failed with an error")
 			return
 		} else {
 			ctx.
 				Level(context.Debug).
+				Field(":return/volume", volume).
 				Message("finished")
 		}
 	}()
@@ -933,7 +949,7 @@ func (m Manager) getVolume(ctx *context.Context, name string) (vol Volume, err e
 
 	mountPointPath := filepath.Join(m.mountDir, name)
 
-	vol = Volume{
+	volume = Volume{
 		Name:                 name,
 		Fs:                   fs,
 		AllocatedSizeInBytes: uint64(details.Blocks * 512),
