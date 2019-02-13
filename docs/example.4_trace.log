@@ -1,0 +1,94 @@
+2019/02/12 22:45:15 Entering go-plugins-helpers getPath
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS329NJCPG5AX5A671F :func=driver/Get :param/request="&{foobar}"
+time="2019-02-12T22:45:15Z" level=trace msg="waiting for a lock" ::trace=01D3HY5GS329NJCPG5AX5A671F :func=driver/Get
+time="2019-02-12T22:45:15Z" level=trace msg="starting processing" ::trace=01D3HY5GS329NJCPG5AX5A671F :func=driver/Get
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS329NJCPG5AX5A671F.1 :func=manager/Get :param/name=foobar
+time="2019-02-12T22:45:15Z" level=trace msg="validating name" ::trace=01D3HY5GS329NJCPG5AX5A671F.1 :func=manager/Get
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS329NJCPG5AX5A671F.1.1 :func=manager/validateName :param/name=foobar
+time="2019-02-12T22:45:15Z" level=debug msg=finished ::trace=01D3HY5GS329NJCPG5AX5A671F.1.1 :func=manager/validateName
+time="2019-02-12T22:45:15Z" level=trace msg="retrieving volume" ::trace=01D3HY5GS329NJCPG5AX5A671F.1 :func=manager/Get
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS329NJCPG5AX5A671F.1.2 :func=manager/getVolume :param/name=foobar
+time="2019-02-12T22:45:15Z" level=error msg="failed with an error" ::trace=01D3HY5GS329NJCPG5AX5A671F.1.2 :func=manager/getVolume :return/err="volume 'foobar' does not exist"
+time="2019-02-12T22:45:15Z" level=error msg="failed with an error" ::trace=01D3HY5GS329NJCPG5AX5A671F.1 :func=manager/Get :return/err="volume 'foobar' does not exist"
+time="2019-02-12T22:45:15Z" level=error msg="failed with an error" ::trace=01D3HY5GS329NJCPG5AX5A671F :func=driver/Get :return/err="volume 'foobar' does not exist"
+2019/02/12 22:45:15 Entering go-plugins-helpers createPath
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create :param/request="&{foobar map[mode:777]}"
+time="2019-02-12T22:45:15Z" level=trace msg="validating options" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'size' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create size=
+time="2019-02-12T22:45:15Z" level=debug msg="no 'size' option found - using default" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create default=1GiB
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'sparse' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create sparse=
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'fs' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create fs=
+time="2019-02-12T22:45:15Z" level=debug msg="no 'fs' option found - using default" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create default=xfs
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'uid' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create uid=
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'gid' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create gid=
+time="2019-02-12T22:45:15Z" level=trace msg="validating 'mode' option" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create mod=777
+time="2019-02-12T22:45:15Z" level=debug msg="will parse mode as octal" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create mode=777
+time="2019-02-12T22:45:15Z" level=trace msg="waiting for a lock" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create
+time="2019-02-12T22:45:15Z" level=trace msg="starting processing" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create :param/fs=xfs :param/gid=-1 :param/mode=0777 :param/name=foobar :param/sizeInBytes=1073741824 :param/sparse=false :param/uid=-1
+time="2019-02-12T22:45:15Z" level=trace msg="validating name" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create name=foobar
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.1 :func=manager/validateName :param/name=foobar
+time="2019-02-12T22:45:15Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.1 :func=manager/validateName
+time="2019-02-12T22:45:15Z" level=trace msg="validating size to be below min-size" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create min-size=20000000 sizeInBytes=1073741824
+time="2019-02-12T22:45:15Z" level=trace msg="validating fs type to be ext4 or xfs" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create fs=xfs
+time="2019-02-12T22:45:15Z" level=trace msg="ensuring data-dir exists and creating it with proper mode if not" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create datta-dir=/var/lib/docker-volume-loopback mode=0755
+time="2019-02-12T22:45:15Z" level=trace msg="attempting creation of a regular data-file with 'fallocate' exec" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar sparse=false
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.2 :func=manager/runCommand :param/args="[-l 1073741824 /var/lib/docker-volume-loopback/foobar]" :param/name=fallocate
+time="2019-02-12T22:45:15Z" level=error msg="failed with an error" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.2 :func=manager/runCommand :return/err="exit status 1"
+time="2019-02-12T22:45:15Z" level=warning msg="it seems that 'fallocate' is not supported - falling back to 'dd' to create data-file" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar sparse=false
+time="2019-02-12T22:45:15Z" level=trace msg="attempting creation of a regular data-file with 'dd' exec" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar sparse=false
+time="2019-02-12T22:45:15Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.3 :func=manager/runCommand :param/args="[if=/dev/zero of=/var/lib/docker-volume-loopback/foobar bs=1000000 count=1073]" :param/name=dd
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.3 :func=manager/runCommand :return/output="1073+0 records in\n1073+0 records out\n1073000000 bytes (1.1 GB, 1023 MiB) copied, 1.12629 s, 953 MB/s"
+time="2019-02-12T22:45:16Z" level=trace msg="attempting to create fs within data-file" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar fs=xfs sparse=false
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.4 :func=manager/runCommand :param/args="[-f /var/lib/docker-volume-loopback/foobar]" :param/name=mkfs.xfs
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.4 :func=manager/runCommand :return/output="meta-data=/var/lib/docker-volume-loopback/foobar isize=512    agcount=4, agsize=65491 blks\n         =                       sectsz=512   attr=2, projid32bit=1\n         =                       crc=1        finobt=1, sparse=0, rmapbt=0, reflink=0\ndata     =                       bsize=4096   blocks=261962, imaxpct=25\n         =                       sunit=0      swidth=0 blks\nnaming   =version 2              bsize=4096   ascii-ci=0 ftype=1\nlog      =internal log           bsize=4096   blocks=855, version=2\n         =                       sectsz=512   sunit=0 blks, lazy-count=1\nrealtime =none                   extsz=4096   blocks=0, rtextents=0"
+time="2019-02-12T22:45:16Z" level=debug msg="initial volume creation complete" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar sparse=false
+time="2019-02-12T22:45:16Z" level=trace msg="mounting volume adjust credentials using fake lease" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar lease=driver sparse=false
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount :param/lease=driver :param/name=foobar
+time="2019-02-12T22:45:16Z" level=trace msg="validating name" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.1 :func=manager/validateName :param/name=foobar
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.1 :func=manager/validateName
+time="2019-02-12T22:45:16Z" level=trace msg="retrieving metadata" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.2 :func=manager/getVolume :param/name=foobar
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.2 :func=manager/getVolume :return/volume="{foobar 1074053120 1073000000 /run/docker-volume-loopback/foobar /var/lib/docker-volume-loopback/foobar /mnt/foobar 2019-02-12 22:45:16.842223078 +0000 UTC }"
+time="2019-02-12T22:45:16Z" level=trace msg="checking if volume is mounted anywhere else" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.3 :func=Volume/IsMounted
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.3 :func=Volume/IsMounted :return/mounted=false
+time="2019-02-12T22:45:16Z" level=trace msg="checking if state-dir exists" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="creating state-dir" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount stateDirMode=-rwxr-xr-x sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="checking if lease-file exists" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount lease-file=/run/docker-volume-loopback/foobar/driver sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="creating lease-file exists" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount lease-file=/run/docker-volume-loopback/foobar/driver sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="creating mount-point" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount lease-file=/run/docker-volume-loopback/foobar/driver mode=0777 mount-point=/mnt/foobar sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="resolving volume fs to determine mount options" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount lease-file=/run/docker-volume-loopback/foobar/driver mount-point=/mnt/foobar sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.4 :func=Volume/Fs
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.4.1 :func=manager/runCommand :param/args="[/var/lib/docker-volume-loopback/foobar]" :param/name=file
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.4.1 :func=manager/runCommand :return/output="/var/lib/docker-volume-loopback/foobar: SGI XFS filesystem data (blksz 4096, inosz 512, v2 dirs)"
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.4 :func=Volume/Fs :return/fs=xfs
+time="2019-02-12T22:45:16Z" level=trace msg="mounting volume to its internal mount-point" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount lease-file=/run/docker-volume-loopback/foobar/driver mount-flags="[-o nouuid]" mount-point=/mnt/foobar sttate-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.5 :func=manager/runCommand :param/args="[-o nouuid /var/lib/docker-volume-loopback/foobar /mnt/foobar]" :param/name=mount
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5.5 :func=manager/runCommand :return/output=
+time="2019-02-12T22:45:16Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.5 :func=manager/Mount :return/result=/mnt/foobar
+time="2019-02-12T22:45:16Z" level=trace msg="adjusting volume's root mode with 'chmod' exec" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar lease=driver mode=0777 sparse=false
+time="2019-02-12T22:45:16Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.6 :func=manager/runCommand :param/args="[0777 /mnt/foobar]" :param/name=chmod
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.6 :func=manager/runCommand :return/output=
+time="2019-02-12T22:45:17Z" level=trace msg="un-mounting volume to clean-up" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar lease=driver sparse=false
+time="2019-02-12T22:45:17Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount :param/lease=driver :param/name=foobar
+time="2019-02-12T22:45:17Z" level=trace msg="validating name" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount
+time="2019-02-12T22:45:17Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.1 :func=manager/validateName :param/name=foobar
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.1 :func=manager/validateName
+time="2019-02-12T22:45:17Z" level=trace msg="retrieving metadata" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount
+time="2019-02-12T22:45:17Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.2 :func=manager/getVolume :param/name=foobar
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.2 :func=manager/getVolume :return/volume="{foobar 1074053120 1073000000 /run/docker-volume-loopback/foobar /var/lib/docker-volume-loopback/foobar /mnt/foobar 2019-02-12 22:45:16.994223078 +0000 UTC }"
+time="2019-02-12T22:45:17Z" level=trace msg="removing lease-file" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount lease-file=/run/docker-volume-loopback/foobar/driver
+time="2019-02-12T22:45:17Z" level=trace msg="checking if volume is mounted anywhere else" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount
+time="2019-02-12T22:45:17Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.3 :func=Volume/IsMounted
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.3 :func=Volume/IsMounted :return/mounted=false
+time="2019-02-12T22:45:17Z" level=trace msg="removing volume's state-dir because it is not mounted anywhere else" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount state-dir=/run/docker-volume-loopback/foobar
+time="2019-02-12T22:45:17Z" level=trace msg="un-mounting volume from its internal mount-point" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount
+time="2019-02-12T22:45:17Z" level=debug msg=invoked ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.4 :func=manager/runCommand :param/args="[-ld /mnt/foobar]" :param/name=umount
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7.4 :func=manager/runCommand :return/output=
+time="2019-02-12T22:45:17Z" level=trace msg="removing internal mount-point dir" ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount mount-point=/mnt/foobar
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1.7 :func=manager/UnMount
+time="2019-02-12T22:45:17Z" level=debug msg=finished ::trace=01D3HY5GS7151NRS5J1D01FSDG.1 :func=manager/Create
+time="2019-02-12T22:45:17Z" level=info msg="created volume" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create volume=foobar
+time="2019-02-12T22:45:17Z" level=debug msg="finished processing" ::trace=01D3HY5GS7151NRS5J1D01FSDG :func=driver/Create

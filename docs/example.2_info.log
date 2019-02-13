@@ -1,0 +1,8 @@
+2019/02/12 22:43:25 Entering go-plugins-helpers getPath
+time="2019-02-12T22:43:25Z" level=error msg="failed with an error" ::trace=01D3HY24X9Z7J91ARJSBP1CHHX.1.2 :func=manager/getVolume :return/err="volume 'foobar' does not exist"
+time="2019-02-12T22:43:25Z" level=error msg="failed with an error" ::trace=01D3HY24X9Z7J91ARJSBP1CHHX.1 :func=manager/Get :return/err="volume 'foobar' does not exist"
+time="2019-02-12T22:43:25Z" level=error msg="failed with an error" ::trace=01D3HY24X9Z7J91ARJSBP1CHHX :func=driver/Get :return/err="volume 'foobar' does not exist"
+2019/02/12 22:43:25 Entering go-plugins-helpers createPath
+time="2019-02-12T22:43:25Z" level=error msg="failed with an error" ::trace=01D3HY24XECDEXF9QEFXAS61E4.1.2 :func=manager/runCommand :return/err="exit status 1"
+time="2019-02-12T22:43:25Z" level=warning msg="it seems that 'fallocate' is not supported - falling back to 'dd' to create data-file" ::trace=01D3HY24XECDEXF9QEFXAS61E4.1 :func=manager/Create data-file=/var/lib/docker-volume-loopback/foobar sparse=false
+time="2019-02-12T22:43:26Z" level=info msg="created volume" ::trace=01D3HY24XECDEXF9QEFXAS61E4 :func=driver/Create volume=foobar

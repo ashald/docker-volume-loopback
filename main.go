@@ -28,7 +28,7 @@ var (
 		DataDir:     "/var/lib/docker-volume-loopback",
 		MountDir:    "/mnt",
 		DefaultSize: "1GiB",
-		LogLevel:    0,
+		LogLevel:    2,
 		LogFormat:   context.FormatNice,
 	}
 )

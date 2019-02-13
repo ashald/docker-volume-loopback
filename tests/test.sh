@@ -4,7 +4,7 @@
 
 IMAGE="alpine"
 DRIVER="docker-volume-loopback"
-eval $(strings -a /proc/$(pidof docker-volume-loopback)/environ | grep DATA_DIR)
+eval $(cat /proc/$(pidof docker-volume-loopback)/environ 2>/dev/null | tr '\0' '\n' | grep DATA_DIR)
 DATA_DIR=${DATA_DIR:-"/var/lib/${DRIVER}"} # a default fall-back
 
 run() {

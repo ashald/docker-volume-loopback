@@ -6,28 +6,22 @@
     ],
     "Env": [
         {
-            "Description": "Dir used to keep track of currently mounted volumes",
-            "Name": "STATE_DIR",
-            "Settable": ["value"],
-            "Value": "/run/docker-volume-loopback"
-        },
-        {
-            "Description": "Dir used to store actual volume data",
+            "Description": "Persistent dir used to store actual volume data",
             "Name": "DATA_DIR",
             "Settable": ["value"],
             "Value": "/srv/var/lib/docker-volume-loopback"
         },
         {
-            "Description": "Dir used to create mount-points",
-            "Name": "MOUNT_DIR",
+            "Description": "Volatile dir used to keep track of currently mounted volumes",
+            "Name": "STATE_DIR",
             "Settable": ["value"],
-            "Value": "/mnt"
+            "Value": "/srv/run/docker-volume-loopback"
         },
         {
-            "Description": "Default size to apply to volumes when no value is specified",
-            "Name": "DEFAULT_SIZE",
-            "Settable": ["value"],
-            "Value": "1GiB"
+            "Description": "Dir used to create mount-points",
+            "Name": "MOUNT_DIR",
+            "Settable": [],
+            "Value": "/mnt"
         },
         {
             "Description": "Path to the plugin UNIX socket",
@@ -36,16 +30,22 @@
             "Value": "/run/docker/plugins/loop.sock"
         },
         {
+            "Description": "Default size to apply to volumes when no value is specified",
+            "Name": "DEFAULT_SIZE",
+            "Settable": ["value"],
+            "Value": "1GiB"
+        },
+        {
             "Description": "Log level - from 0 to 4 for Error/Warning/Info/Debug/Trace",
             "Name": "LOG_LEVEL",
-            "Settable": [],
+            "Settable": ["value"],
             "Value": "2"
         },
         {
             "Description": "Log format - json or text",
             "Name": "LOG_FORMAT",
-            "Settable": [],
-            "Value": "json"
+            "Settable": ["value"],
+            "Value": "text"
         }
     ],
     "Interface": {
@@ -63,12 +63,6 @@
             "Destination": "/dev",
             "Options": ["bind"],
             "Source": "/dev",
-            "Type": "bind"
-        },
-        {
-            "Destination": "/run",
-            "Options": ["bind"],
-            "Source": "/run",
             "Type": "bind"
         },
         {
