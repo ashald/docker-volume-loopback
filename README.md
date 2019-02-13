@@ -83,12 +83,15 @@ creation operation when the plugin has to store its data files on an older files
 Plugin is compatible with [Docker's managed plugin system] and therefore can be installed as simple as:
 ```bash
 $ docker plugin install ashald/docker-volume-loopback
-  
   Plugin "ashald/docker-volume-loopback" is requesting the following privileges:
-  - capabilities: [CAP_SYS_ADMIN]
+   - mount: [/dev]
+   - mount: [/]
+   - allow-all-devices: [true]
+   - capabilities: [CAP_SYS_ADMIN]
   Do you grant the above permissions? [y/N] y
-  
-  ashald/docker-volume-loopback
+  latest: Pulling from ashald/docker-volume-loopback
+  ...
+  Installed plugin ashald/docker-volume-loopback
 ```
 
 ### Manual
