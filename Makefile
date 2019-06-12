@@ -1,6 +1,6 @@
-VERSION             ?= $(shell git describe 2>/dev/null || echo "v0.$(git rev-list --count HEAD)")
-AUTHOR              := ashald
-PLUGIN_NAME			:= docker-volume-loopback
+VERSION			?= $(shell git describe 2>/dev/null || echo "v0.$(git rev-list --count HEAD)")
+AUTHOR			:= ashald
+PLUGIN_NAME		:= docker-volume-loopback
 PLUGIN_FULL_NAME	:= ${AUTHOR}/${PLUGIN_NAME}
 ROOTFS_CONTAINER	:= ${PLUGIN_NAME}-rootfs
 ROOTFS_IMAGE		:= ${AUTHOR}/${ROOTFS_CONTAINER}
